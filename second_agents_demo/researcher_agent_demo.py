@@ -33,7 +33,7 @@ FILE_ROOT_DIR = str(Path(CURRENT_WORKING_DIR) / Path(FILE_DIR))
 # llm info
 LOCAL_MODEL="qwen3.6:27b"
 LOCAL_BASEURL="http://172.30.0.1:11434"
-ONLINE_MODEL="minimax-m3:cloud"
+ONLINE_MODEL="gemma4:31b-cloud"
 ONLINE_BASEURL="http://172.30.0.1:11434"
 
 # system prompt for research agent
