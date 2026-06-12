@@ -18,6 +18,9 @@ from langchain_ollama import ChatOllama
 from langchain_core.caches import InMemoryCache
 from langchain_core.globals import set_llm_cache
 
+from typing import Any
+import json
+
 from cninfo_report_downloader import CNInfoReportDownloader
 
 MAX_COMPLETION_TOKENS = os.environ.get("MAX_COMPLETION_TOKENS", "16384")
@@ -50,8 +53,7 @@ RESEARCHER_SYSTEM_PROMPT = """
 ## Constraints 
 - Critical High Rule: Do not call concurrency download request with tool, You must wait the first query complete, then send the next query.
 - **Strict Review**: After obtaining results, check each one to see if it is satisfied to the query, if yes then stop the query.
-- The output meta data content must inculde title, path, type for each file. 
-- You must dump the JSON format into a string content when invoke the write file tool. Do NOT pass dictionaries or lists directly.
+- The output meta data content must inculde title, path, type for each download file. 
 - **If you already have task completed, STOP and Return the final results at once**.
 """
 
@@ -120,6 +122,31 @@ def get_current_time() -> str:
     """Get the current date and time."""
     return "Current date and time is: " + datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+@tool
+def save_json_file(
+    file_path: str,
+    data: Any,
+) -> str:
+    """
+    Save structured data as a JSON file in the Deep Agents workspace.
+
+    Args:
+        file_path: Workspace-relative path.
+        data: Dict/list/object to save.
+    """
+
+    content = json.dumps(
+        data,
+        ensure_ascii=False,
+        indent=2,
+    )
+
+    result = fs_backend.write(
+        file_path=file_path,
+        content=content,
+    )
+
+    return str(result)
 
 # Message limit middleware, to prevent the comtext overflow, initial the threshold = 100
 class MessageLimitMiddleware(AgentMiddleware):
@@ -182,7 +209,7 @@ agent_researcher = create_deep_agent(
     name="Researcher",
     model=model_ollama,
     backend=fs_backend,
-    tools=[get_current_time, tool_cninfo_report_downloader],
+    tools=[get_current_time, tool_cninfo_report_downloader, save_json_file],
     system_prompt=RESEARCHER_SYSTEM_PROMPT,
     middleware=[messageLimitMiddleware, toolCallLimitMiddleware]
 )
