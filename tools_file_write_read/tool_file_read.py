@@ -20,6 +20,7 @@ Logging:
 
 # get the logger
 import logging
+import os
 from pathlib import Path
 
 from langchain.tools import tool
@@ -27,11 +28,13 @@ from langchain_community.document_loaders import PDFPlumberLoader, Docx2txtLoade
 
 logger = logging.getLogger(__name__)
 
+FILE_DIR = os.environ.get("FILE_DIR", "./tmp")
+
 @tool
 def tool_custom_file_read (file_path:str) -> str:
     """
-    Reads a file and returns the extracted text content.
-    Args: file_path (str): The name with full path of the file need to be read. e.g. /path/to/your/document.pdf
+    Reads the target file and returns the extracted content.
+    Args: file_path (str): The path of the file need to be read. e.g. /path/to/your/document.pdf
     Returns: The extracted txt content from the file
     """
     # check the passed in file path
@@ -39,25 +42,28 @@ def tool_custom_file_read (file_path:str) -> str:
     if file_full_path.is_file():
         logger.info("File is under valid directory and exist: %s", file_full_path)
     else:
-        logger.error("⚠️ File path is wriong or not exist: %s", file_full_path)
-        return f"File path is wriong or not exist: {file_full_path}, check the input file path, try again"
-
+        # check the file with the actual physical path
+        file_full_path = Path.cwd() / FILE_DIR / file_path.lstrip("/") 
+        if(file_full_path.is_file()):
+            logger.info("File is under valid directory and exist with actual physical path: %s", file_full_path)
+        else:
+            logger.error("⚠️ File path is wrong or not exist: %s", file_full_path)
+            return f"File path is wriong or not exist: {file_full_path}, check the input file path, try again"
 
     # Get the file type
     ext = file_full_path.suffix.lower()
-
     try:
         loader = None
         if ext in [".txt",".md",".json",".yaml",".xml",".html",".js",".log",".yml",".cfg",".ini"]:
-            loader = TextLoader(file_path, encoding="utf-8")
+            loader = TextLoader(file_full_path, encoding="utf-8")
         elif ext==".docx":
-            loader = Docx2txtLoader(file_path)
+            loader = Docx2txtLoader(file_full_path)
         elif ext==".pdf":
-            loader = PDFPlumberLoader(file_path)
+            loader = PDFPlumberLoader(file_full_path)
         elif ext==".xls":
-            loader = UnstructuredExcelLoader(file_path)
+            loader = UnstructuredExcelLoader(file_full_path)
         elif ext==".csv":
-            loader= CSVLoader(file_path)
+            loader= CSVLoader(file_full_path)
         else:
             raise ValueError(f" ❌ Unsupported file type: {ext}")
 

@@ -1,4 +1,61 @@
 """
+Analyzer Agent Demo: Senior Financial Analyst Deep Agent
+
+This module demonstrates how to build a **LangChain Deep Agent** that acts as a
+senior financial analyst for a listed company. The agent is designed to review
+and analyze target PDF files (e.g. annual / quarterly reports) described by a
+metadata JSON file, and to produce a structured Markdown analysis report using
+the *DuPont analysis* methodology.
+
+Key Features
+------------
+* **Deep Agent orchestration** — built on top of ``deepagents.create_deep_agent``
+  with a virtual ``FilesystemBackend`` for file I/O isolation.
+* **Custom tooling** — exposes ``get_current_time`` and a project-specific
+  ``tool_custom_file_read`` tool so the agent can inspect PDF documents.
+* **Skill mounting** — copies the ``senior-financial-dupont-analyst`` skill
+  (see ``skills/senior-financial-dupont-analyst/SKILL.md``) into the agent's
+  virtual filesystem so it is available at runtime.
+* **Safety guard-rails** — two middleware components are attached to the
+  agent:
+    - ``MessageLimitMiddleware`` — aborts the run with a clear message once
+      the conversation history exceeds ``max_messages`` (default 50).
+    - ``ToolCallLimitMiddleware`` — caps calls to ``tool_custom_file_read``
+      at 30 invocations per run to prevent runaway tool usage.
+* **Local LLM via Ollama** — configurable through the ``ONLINE_MODEL`` /
+  ``LOCAL_MODEL`` and ``ONLINE_BASEURL`` / ``LOCAL_BASEURL`` constants; the
+  context window size is controlled by the ``MAX_COMPLETION_TOKENS``
+  environment variable (default ``"16384"``).
+
+Configuration
+-------------
+The following environment variables are honored:
+
+* ``MAX_COMPLETION_TOKENS`` — context window size for the chat model.
+* ``FILE_DIR``              — directory (relative to the current working
+                              directory) that will be exposed to the
+                              ``FilesystemBackend`` (default ``"./tmp"``).
+
+Usage
+-----
+This module is intended to be imported by test/entry-point scripts such as
+``demo_agent_analyze_test.py``. It can also be run directly to perform a
+smoke test, but typically the agent is invoked programmatically:
+
+    from third_agents_demo.analyzer_agent_demo import agent_analyzer
+
+    result = agent_analyzer.invoke({
+        "messages": [{"role": "user", "content": "..."}],
+    })
+
+Notes
+-----
+* ``virtual_mode=True`` on the backend means the agent cannot escape the
+  ``FILE_DIR`` sandbox; all file operations are translated to safe virtual
+  paths.
+* The DuPont skill content is read at import time from
+  ``<cwd>/skills/senior-financial-dupont-analyst/SKILL.md`` and must exist
+  for the module to import successfully.
 """
 
 from datetime import datetime
@@ -23,7 +80,7 @@ CURRENT_WORKING_DIR = os.getcwd()
 
 FILE_DIR = os.environ.get("FILE_DIR", "./tmp")
 
-# export FILE_ROOT_DIR="your/file/root/dir"
+# export FILE_ROOT_DIR="/your/file/root/dir"
 FILE_ROOT_DIR = str(Path(CURRENT_WORKING_DIR) / Path(FILE_DIR))
 
 # llm info
@@ -38,8 +95,8 @@ ANALYST_SYSTEM_PROMPT = """
 ## Your goal is to review and analyze the target PDF files descriped in meta data json file.
 
 ## Core Steps
-1. Firstly: You review the json file to make a plan with read target PDF file one by one.
-2. Secondly: You use `tool_custom_file_read` to read the target PDF file follow the plan.
+1. Firstly: You find and review the json file to make a plan with read target PDF file one by one.
+2. Secondly: You use `tool_custom_file_read` to read each target PDF file follow the plan.
 3. Thirdly: Analyze and summary the content with the skill 'senior-financial-dupont-analyst'.
 4. Finally: Generate report file with markdown format.
 
@@ -64,7 +121,7 @@ class MessageLimitMiddleware(AgentMiddleware):
         self.max_messages = max_messages
         self.agent_name = agent_name
 
-    # jump t
+    # jump to end if reach the limitation
     @hook_config(can_jump_to=["end"])
     def before_model(self, state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
 
@@ -90,10 +147,10 @@ class MessageLimitMiddleware(AgentMiddleware):
         return None
 
 # initial the Message Middleware Object for manager agent
-messageLimitMiddleware = MessageLimitMiddleware(max_messages=60, agent_name="Researcher")
+messageLimitMiddleware = MessageLimitMiddleware(max_messages=100, agent_name="Analyzer")
 
 # inital the tool call limitation with 30
-toolCallLimitMiddleware = cast(AgentMiddleware, ToolCallLimitMiddleware(tool_name="tool_cninfo_report_downloader", run_limit=30, exit_behavior="end"))
+toolCallLimitMiddleware = cast(AgentMiddleware, ToolCallLimitMiddleware(tool_name="tool_custom_file_read", run_limit=30, exit_behavior="end"))
 
 # inital the model object of Ollama provider
 model_ollama = ChatOllama(
@@ -122,8 +179,8 @@ fs_backend.write(
 )
 
 # initial the main agent
-agent_researcher = create_deep_agent(
-    name="Researcher",
+agent_analyzer = create_deep_agent(
+    name="Analyzer",
     model=model_ollama,
     skills=["/skills/"],
     backend=fs_backend,
