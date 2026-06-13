@@ -1,4 +1,43 @@
 """
+Researcher Agent Demo Module
+
+This module defines a deep research agent (``Researcher``) built on top of
+`langchain-deepagents` and powered by a local ChatOllama model. The agent is
+designed to autonomously search, download, and catalog financial disclosure
+reports (annual/quarterly PDFs) published on the *CNINFO* (巨潮资讯) platform
+for a given listed company, and persist the metadata of every downloaded file
+into a JSON manifest inside the agent's virtual workspace.
+
+* **System prompt** : ``RESEARCHER_SYSTEM_PROMPT`` instructs the agent to
+  plan, download reports one at a time (no concurrent calls), and emit a JSON
+  manifest containing at least ``title``, ``path`` and ``type`` for every
+  downloaded PDF.
+
+Environment variables
+---------------------
+* ``MAX_COMPLETION_TOKENS`` — context window size for the LLM (default
+  ``"16384"``).
+* ``FILE_DIR`` — sandbox directory relative to the current working directory
+  (default ``"./tmp"``).
+
+Exports
+-------
+* ``agent_researcher`` : the configured deep agent instance, ready to be
+  invoked with ``agent_researcher.invoke({"messages": [...]})``.
+
+Usage
+-----
+Run this module directly or import ``agent_researcher`` from another script
+(e.g. ``demo_agent_research_test.py``) and drive it with a user request such
+as::
+
+    Please download the 2023 annual report of "平安银行" and the Q2 2024
+    quarterly report of "000001", then write the metadata manifest to
+    "manifest.json".
+
+The agent will plan the downloads, fetch them sequentially through the
+``cninfo_report_downloader`` skill, and finish by writing a structured JSON
+manifest describing every successfully retrieved PDF.
 """
 
 # export MAX_COMPLETION_TOKENS as a passin varaible
