@@ -26,12 +26,16 @@ Thumbs.db
 .pytest_cache/
 .coverage
 htmlcov/
+*.log
 
 # Type checking
 .mypy_cache/
 
 # Ruff
 .ruff_cache/
+
+# temp generation files
+.tmp/
 
 # Build artifacts
 build/
