@@ -35,7 +35,7 @@ htmlcov/
 .ruff_cache/
 
 # temp generation files
-.tmp/
+tmp/
 
 # Build artifacts
 build/

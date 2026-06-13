@@ -18,7 +18,6 @@ from langchain_ollama import ChatOllama
 from langchain_core.caches import InMemoryCache
 from langchain_core.globals import set_llm_cache
 
-from typing import Any
 import json
 
 from cninfo_report_downloader import CNInfoReportDownloader
