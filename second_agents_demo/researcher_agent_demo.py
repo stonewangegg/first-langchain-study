@@ -230,7 +230,7 @@ set_llm_cache(InMemoryCache())
 # inital the model object of Ollama provider
 model_ollama = ChatOllama(
             model=LOCAL_MODEL,
-            validate_model_on_init=True,
+            # validate_model_on_init=True,
             # num_thread=16,
             cache=True,
             verbose=True,                       # Print additional LangChain logs.Useful for debugging: prompts, tool calls, intermediate chains
@@ -258,7 +258,7 @@ fs_backend = FilesystemBackend(root_dir=FILE_DIR, virtual_mode=True)
 
 agent_researcher = create_deep_agent(
     name="Researcher",
-    model=model_ollama,
+    model=model_vllm,
     backend=fs_backend,
     tools=[get_current_time, tool_cninfo_report_downloader, save_json_file],
     system_prompt=RESEARCHER_SYSTEM_PROMPT,

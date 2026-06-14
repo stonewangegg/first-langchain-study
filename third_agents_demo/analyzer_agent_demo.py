@@ -100,9 +100,9 @@ ANALYST_SYSTEM_PROMPT = """
 ## Your goal is to review and analyze the target PDF files descriped in meta data json file.
 
 ## Core Steps
-1. Firstly: You find and review the json file to make a plan with read target PDF file one by one.
-2. Secondly: You use `tool_custom_file_read` to read each target PDF file follow the plan.
-3. Thirdly: Analyze and summary the content with the skill 'senior-financial-dupont-analyst'.
+1. Firstly: You find and review the json file to make a plan for reading target PDF files.
+2. Secondly: You use `tool_custom_file_read` to read the target PDF file **one bye one**.
+3. Thirdly: Analyze and summary the content follow the skill 'senior-financial-dupont-analyst'.
 4. Finally: Generate report file with markdown format.
 
 ## Core Principles
@@ -163,7 +163,7 @@ set_llm_cache(InMemoryCache())
 # inital the model object of Ollama provider
 model_ollama = ChatOllama(
             model=LOCAL_MODEL,
-            validate_model_on_init=True,
+            # validate_model_on_init=True,
             # num_thread=16,
             cache=True,
             verbose=True,                       # Print additional LangChain logs.Useful for debugging: prompts, tool calls, intermediate chains
@@ -180,7 +180,7 @@ model_vllm = ChatOpenAI(
     model=LOCAL_MODEL,                                # Model name (can be any vLLM-supported model)
     base_url=LOCAL_BASEURL,                           # vLLM server endpoint         
     api_key=SecretStr("EMPTY"),                 # vLLM uses a placeholder token
-    temperature=0.4,
+    temperature=0.7,
     top_p=0.9,
     max_completion_tokens=int(MAX_COMPLETION_TOKENS)
 )
@@ -200,7 +200,7 @@ fs_backend.write(
 # initial the main agent
 agent_analyzer = create_deep_agent(
     name="Analyzer",
-    model=model_ollama,
+    model=model_vllm,
     skills=["/skills/"],
     backend=fs_backend,
     tools=[get_current_time, tool_custom_file_read],
