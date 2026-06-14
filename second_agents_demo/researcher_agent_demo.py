@@ -51,6 +51,7 @@ from deepagents import create_deep_agent
 from deepagents.backends import FilesystemBackend
 from langchain.agents.middleware import AgentMiddleware, AgentState, ToolCallLimitMiddleware, hook_config
 from langchain.messages import AIMessage
+from langchain_openai import ChatOpenAI
 from langgraph.runtime import Runtime
 from langchain.tools import tool
 from langchain_ollama import ChatOllama
@@ -58,6 +59,8 @@ from langchain_core.caches import InMemoryCache
 from langchain_core.globals import set_llm_cache
 
 import json
+
+from pydantic import SecretStr
 
 from cninfo_report_downloader import CNInfoReportDownloader
 
@@ -237,6 +240,16 @@ model_ollama = ChatOllama(
             repeat_penalty=1.05,
             num_ctx=int(MAX_COMPLETION_TOKENS),
             disable_streaming="tool_calling"
+)
+
+# initial the model object that vLLM provides an OpenAI-compatible API at localhost:8000
+model_vllm = ChatOpenAI(
+    model=LOCAL_MODEL,                                # Model name (can be any vLLM-supported model)
+    base_url=LOCAL_BASEURL,                           # vLLM server endpoint         
+    api_key=SecretStr("EMPTY"),                 # vLLM uses a placeholder token
+    temperature=0.4,
+    top_p=0.9,
+    max_completion_tokens=int(MAX_COMPLETION_TOKENS)
 )
 
 

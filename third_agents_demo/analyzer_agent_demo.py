@@ -71,6 +71,11 @@ from langchain.agents.middleware import AgentMiddleware, AgentState, Runtime, To
 from langchain.messages import AIMessage
 from langchain_ollama import ChatOllama
 
+from langchain_core.caches import InMemoryCache
+from langchain_core.globals import set_llm_cache
+from langchain_openai import ChatOpenAI
+from pydantic import SecretStr
+
 from tools_file_write_read import tool_custom_file_read
 
 MAX_COMPLETION_TOKENS = os.environ.get("MAX_COMPLETION_TOKENS", "16384")
@@ -152,11 +157,15 @@ messageLimitMiddleware = MessageLimitMiddleware(max_messages=100, agent_name="An
 # inital the tool call limitation with 30
 toolCallLimitMiddleware = cast(AgentMiddleware, ToolCallLimitMiddleware(tool_name="tool_custom_file_read", run_limit=30, exit_behavior="end"))
 
+# initial the cache backend for below cache=True
+set_llm_cache(InMemoryCache())
+
 # inital the model object of Ollama provider
 model_ollama = ChatOllama(
             model=ONLINE_MODEL,
             validate_model_on_init=True,
             # num_thread=16,
+            cache=True,
             verbose=True,                       # Print additional LangChain logs.Useful for debugging: prompts, tool calls, intermediate chains
             reasoning=False,
             temperature=0.5,
@@ -164,6 +173,16 @@ model_ollama = ChatOllama(
             repeat_penalty=1.05,
             num_ctx=int(MAX_COMPLETION_TOKENS),
             disable_streaming="tool_calling"
+)
+
+# initial the model object that vLLM provides an OpenAI-compatible API at localhost:8000
+model_vllm = ChatOpenAI(
+    model=LOCAL_MODEL,                                # Model name (can be any vLLM-supported model)
+    base_url=LOCAL_BASEURL,                           # vLLM server endpoint         
+    api_key=SecretStr("EMPTY"),                 # vLLM uses a placeholder token
+    temperature=0.4,
+    top_p=0.9,
+    max_completion_tokens=int(MAX_COMPLETION_TOKENS)
 )
 
 # Config the Built-in Filesystem Backend
