@@ -75,8 +75,8 @@ def tool_custom_file_read (file_path:str) -> str:
         full_text = "\n\n".join([doc.page_content for doc in docs])
 
         logger.info("✅ Complete read the file: %s", file_full_path)
-        return f"Complete read the file: {file_full_path}, content: " + full_text
+        return f"Complete read the file: {file_full_path}, content is: " + full_text
 
     except Exception as e:
         logger.error("❌ Error reading file: %s, %s", file_full_path, str(e))
-        return f"Read file faild: {file_full_path}, {str(e)}"
+        return f"Read file faild: {file_full_path}, {str(e)}. Try to use the built-in `read_file` tool."
