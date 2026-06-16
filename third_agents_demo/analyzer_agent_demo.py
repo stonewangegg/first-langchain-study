@@ -199,6 +199,11 @@ model_vllm = ChatOpenAI(
     max_completion_tokens=int(MAX_COMPLETION_TOKENS)
 )
 
+# disable the llm parallel tool calls
+model_vllm.bind(
+    parallel_tool_calls=False
+)
+
 # Config the Built-in Filesystem Backend
 fs_backend = FilesystemBackend(root_dir=FILE_DIR, virtual_mode=True)
 
