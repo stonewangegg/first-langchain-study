@@ -216,9 +216,19 @@ class MessageLimitMiddleware(AgentMiddleware):
         return None
 
     def after_model(self, state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
-        messages = state["messages"]
-        for i, msg in enumerate(messages):
-            logger.info("<------ [%s] Model returned Message %d: Role=%s, Content='%s'\n", self.agent_name, i, msg.type, msg.content)
+        last_two_messages = state["messages"][-2:]
+        
+        for i, msg in enumerate(last_two_messages):
+            logger.info("<------ [%s] The Model returned Message (last two) [%d]: Role=%s, Content='%s'\n", self.agent_name, i, msg.type, msg.content)
+
+            if isinstance(msg, AIMessage) and msg.tool_calls:
+                for tool_call in msg.tool_calls:
+                    logger.info(f"TOOL REQUEST ==> Name: f{tool_call['name']}, ARGS: {tool_call['args']}")
+
+        # messages = state["messages"]
+        # for i, msg in enumerate(messages):
+        #     logger.info("<------ [%s] Model returned Message %d: Role=%s, Content='%s'\n", self.agent_name, i, msg.type, msg.content)
+        
         return None
 
 # initial the Message Middleware Object for manager agent
