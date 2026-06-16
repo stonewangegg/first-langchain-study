@@ -11,10 +11,6 @@ from pydantic import SecretStr
 from tavily import TavilyClient
 from typing import Literal
 
-# local test modules
-import first_agents_demo.demo_agent1
-
-
 tavily_client = TavilyClient(api_key=os.environ["TAVILY_API_KEY"])
 
 # System prompt to steer the agent to be an expert researcher

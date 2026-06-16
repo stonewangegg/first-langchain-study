@@ -3,13 +3,13 @@
 """
 
 import logging
-from typing import NotRequired, TypedDict
+from typing import TypedDict
 
 from jinja2 import Template
 from langgraph.graph import END, START, StateGraph
 
-from second_agents_demo import create_researcher_agent, SUPPORTED_LLM_TYPES
-from third_agents_demo import create_analyzer_agent
+from sl_finance_agent import create_researcher_agent, SUPPORTED_LLM_TYPES
+from sl_finance_agent import create_analyzer_agent
 
 logging.basicConfig(
     level=logging.INFO,

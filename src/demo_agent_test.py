@@ -8,7 +8,7 @@ from langchain_core.runnables import RunnableConfig
 
 from jinja2 import Template
 
-from first_agents_demo.demo_agent1 import agent_collaborator
+from sl_finance_agent import agent_collaborator
 
 logging.basicConfig(
     level=logging.INFO,

@@ -4,7 +4,7 @@ Agent researcher testing
 
 import logging
 from jinja2 import Template
-from second_agents_demo import create_researcher_agent, SUPPORTED_LLM_TYPES
+from sl_finance_agent import create_researcher_agent, SUPPORTED_LLM_TYPES
 
 logging.basicConfig(
     level=logging.INFO,

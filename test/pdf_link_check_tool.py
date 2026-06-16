@@ -3,13 +3,16 @@ Test using WebBaseLoader to load web pages and verify if target content matches 
 """
 import os
 
-MY_UA = "Mozilla/5.0 (Macintosh, Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-os.environ['USER_AGENT'] = MY_UA
-
-import re, httpx, pdfplumber, io
+import re
+import httpx
+import pdfplumber
+import io
 from langchain_community.document_loaders import WebBaseLoader
 from bs4.filter import SoupStrainer
 from langchain.tools import tool
+
+MY_UA = "Mozilla/5.0 (Macintosh, Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+os.environ['USER_AGENT'] = MY_UA
 
 @tool
 def tool_fetch_url_info_with_loader(url: str, target_year: int = 2025, target_type: str = "年报年度报告") -> dict:

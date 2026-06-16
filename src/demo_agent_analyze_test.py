@@ -4,7 +4,7 @@ Agent analyzer testing
 
 import logging
 
-from third_agents_demo import create_analyzer_agent, SUPPORTED_LLM_TYPES
+from sl_finance_agent import create_analyzer_agent, SUPPORTED_LLM_TYPES
 
 logging.basicConfig(
     level=logging.INFO,
