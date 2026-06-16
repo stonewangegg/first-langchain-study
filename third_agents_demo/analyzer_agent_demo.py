@@ -146,9 +146,23 @@ class MessageLimitMiddleware(AgentMiddleware):
         return None
 
     def after_model(self, state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
-        messages = state["messages"]
-        for i, msg in enumerate(messages):
-            logger.info("<------ [%s] Model returned Message %d: Role=%s, Content='%s'\n", self.agent_name, i, msg.type, msg.content)
+        last_two_messages = state["messages"][-2:]
+        
+        for i, msg in enumerate(last_two_messages):
+            logger.info("<------ [%s] The Model returned Message (last two) [%d]: Role=%s, Content='%s'\n", self.agent_name, i, msg.type, msg.content)
+
+            if isinstance(msg, AIMessage) and msg.tool_calls:
+                for tool_call in msg.tool_calls:
+                    logger.info(f"TOOL REQUEST ==> Name: f{tool_call['name']}, ARGS: {tool_call['args']}")
+
+        # messages = state["messages"]
+        # for i, msg in enumerate(messages):
+        #     if isinstance(msg, AIMessage):
+        #         if msg.tool_calls:
+        #             for tool_call in msg.tool_calls:
+        #                 logger.info(f"TOOL REQUEST: f{tool_call['name']}, ARGS: {tool_call['args']}")
+        #     logger.info("<------ [%s] Model returned Message %d: Role=%s, Content='%s'\n", self.agent_name, i, msg.type, msg.content)
+        
         return None
 
 # initial the Message Middleware Object for manager agent
@@ -162,14 +176,14 @@ set_llm_cache(InMemoryCache())
 
 # inital the model object of Ollama provider
 model_ollama = ChatOllama(
-            model=LOCAL_MODEL,
+            model=ONLINE_MODEL,
             # validate_model_on_init=True,
             # num_thread=16,
             cache=True,
             verbose=True,                       # Print additional LangChain logs.Useful for debugging: prompts, tool calls, intermediate chains
             reasoning=False,
-            temperature=0.5,
-            base_url=LOCAL_BASEURL,
+            temperature=0.6,
+            base_url=ONLINE_BASEURL,
             repeat_penalty=1.05,
             num_ctx=int(MAX_COMPLETION_TOKENS),
             disable_streaming="tool_calling"
@@ -180,7 +194,7 @@ model_vllm = ChatOpenAI(
     model=LOCAL_MODEL,                                # Model name (can be any vLLM-supported model)
     base_url=LOCAL_BASEURL,                           # vLLM server endpoint         
     api_key=SecretStr("EMPTY"),                 # vLLM uses a placeholder token
-    temperature=0.7,
+    temperature=0.6,
     top_p=0.9,
     max_completion_tokens=int(MAX_COMPLETION_TOKENS)
 )
@@ -197,13 +211,84 @@ fs_backend.write(
     skill_content
 )
 
-# initial the main agent
-agent_analyzer = create_deep_agent(
-    name="Analyzer",
-    model=model_vllm,
-    skills=["/skills/"],
-    backend=fs_backend,
-    tools=[get_current_time, tool_custom_file_read],
-    system_prompt=ANALYST_SYSTEM_PROMPT,
-    middleware=[messageLimitMiddleware, toolCallLimitMiddleware]
-)
+
+
+# Supported LLM type identifiers for ``create_analyzer_agent``.
+# Pass one of these strings as the ``llm_type`` argument to choose which
+# underlying chat model the analyzer agent will use at runtime.
+SUPPORTED_LLM_TYPES = ("ollama", "vllm")
+DEFAULT_LLM_TYPE = "ollama"
+
+
+def _resolve_llm(llm_type: str):
+    """Return the chat model object that corresponds to ``llm_type``.
+
+    Parameters
+    ----------
+    llm_type : str
+        Identifier of the chat model to use. Must be one of
+        ``SUPPORTED_LLM_TYPES`` (i.e. ``"ollama"`` or
+        ``"vllm"``).
+
+    Returns
+    -------
+    BaseChatModel
+        The configured chat model instance (``ChatOllama`` or
+        ``ChatOpenAI``) to plug into the deep agent.
+
+    Raises
+    ------
+    ValueError
+        If ``llm_type`` is not one of the supported identifiers.
+    """
+    if llm_type == "ollama":
+        return model_ollama
+    if llm_type == "vllm":
+        return model_vllm
+    raise ValueError(
+        f"Unsupported llm_type: {llm_type!r}. "
+        f"Expected one of: {', '.join(SUPPORTED_LLM_TYPES)}"
+    )
+
+
+def create_analyzer_agent(llm_type: str = DEFAULT_LLM_TYPE):
+    """Create the senior financial analyst deep agent.
+
+    Parameters
+    ----------
+    llm_type : str, optional
+        Which underlying chat model to wire into the agent. Must be one of
+        ``"ollama"`` (default, ``ChatOllama`` against the
+        ``LOCAL_BASEURL``) or ``"vllm"`` (``ChatOpenAI`` against the
+        vLLM OpenAI-compatible endpoint at ``LOCAL_BASEURL``).
+
+    Returns
+    -------
+    CompiledStateGraph
+        The deep agent instance produced by ``create_deep_agent``, ready
+        to be invoked with a ``{"messages": [...]}`` input payload.
+
+    Raises
+    ------
+    ValueError
+        If ``llm_type`` is not one of ``SUPPORTED_LLM_TYPES``.
+
+    Examples
+    --------
+    >>> agent = create_analyzer_agent("ollama")
+    >>> result = agent.invoke({
+    ...     "messages": [{"role": "user", "content": "Analyze ..."}],
+    ... })
+    """
+    model = _resolve_llm(llm_type)
+    logger.info("Creating Analyzer deep agent with llm_type=%s", llm_type)
+
+    return create_deep_agent(
+        name="Analyzer",
+        model=model,
+        skills=["/skills/"],
+        backend=fs_backend,
+        tools=[get_current_time, tool_custom_file_read],
+        system_prompt=ANALYST_SYSTEM_PROMPT,
+        middleware=[messageLimitMiddleware, toolCallLimitMiddleware],
+    )

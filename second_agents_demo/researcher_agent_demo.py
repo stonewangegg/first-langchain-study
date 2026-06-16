@@ -229,14 +229,14 @@ set_llm_cache(InMemoryCache())
 
 # inital the model object of Ollama provider
 model_ollama = ChatOllama(
-            model=LOCAL_MODEL,
+            model=ONLINE_MODEL,
             # validate_model_on_init=True,
             # num_thread=16,
             cache=True,
             verbose=True,                       # Print additional LangChain logs.Useful for debugging: prompts, tool calls, intermediate chains
             reasoning=False,
             temperature=0.5,
-            base_url=LOCAL_BASEURL,
+            base_url=ONLINE_BASEURL,
             repeat_penalty=1.05,
             num_ctx=int(MAX_COMPLETION_TOKENS),
             disable_streaming="tool_calling"
@@ -256,11 +256,81 @@ model_vllm = ChatOpenAI(
 # Configure the Built-in Filesystem Backend
 fs_backend = FilesystemBackend(root_dir=FILE_DIR, virtual_mode=True)
 
-agent_researcher = create_deep_agent(
-    name="Researcher",
-    model=model_vllm,
-    backend=fs_backend,
-    tools=[get_current_time, tool_cninfo_report_downloader, save_json_file],
-    system_prompt=RESEARCHER_SYSTEM_PROMPT,
-    middleware=[messageLimitMiddleware, toolCallLimitMiddleware]
-)
+# Supported LLM type identifiers for ``create_analyzer_agent``.
+# Pass one of these strings as the ``llm_type`` argument to choose which
+# underlying chat model the analyzer agent will use at runtime.
+SUPPORTED_LLM_TYPES = ("ollama", "vllm")
+DEFAULT_LLM_TYPE = "ollama"
+
+
+def _resolve_llm(llm_type: str):
+    """Return the chat model object that corresponds to ``llm_type``.
+
+    Parameters
+    ----------
+    llm_type : str
+        Identifier of the chat model to use. Must be one of
+        ``SUPPORTED_LLM_TYPES`` (i.e. ``"ollama"`` or
+        ``"vllm"``).
+
+    Returns
+    -------
+    BaseChatModel
+        The configured chat model instance (``ChatOllama`` or
+        ``ChatOpenAI``) to plug into the deep agent.
+
+    Raises
+    ------
+    ValueError
+        If ``llm_type`` is not one of the supported identifiers.
+    """
+    if llm_type == "ollama":
+        return model_ollama
+    if llm_type == "vllm":
+        return model_vllm
+    raise ValueError(
+        f"Unsupported llm_type: {llm_type!r}. "
+        f"Expected one of: {', '.join(SUPPORTED_LLM_TYPES)}"
+    )
+
+
+def create_researcher_agent(llm_type: str = DEFAULT_LLM_TYPE):
+    """Create the senior Web Researcher deep agent.
+
+    Parameters
+    ----------
+    llm_type : str, optional
+        Which underlying chat model to wire into the agent. Must be one of
+        ``"ollama"`` (default, ``ChatOllama`` against the
+        ``LOCAL_BASEURL``) or ``"vllm"`` (``ChatOpenAI`` against the
+        vLLM OpenAI-compatible endpoint at ``LOCAL_BASEURL``).
+
+    Returns
+    -------
+    CompiledStateGraph
+        The deep agent instance produced by ``create_deep_agent``, ready
+        to be invoked with a ``{"messages": [...]}`` input payload.
+
+    Raises
+    ------
+    ValueError
+        If ``llm_type`` is not one of ``SUPPORTED_LLM_TYPES``.
+
+    Examples
+    --------
+    >>> agent = create_analyzer_agent("ollama")
+    >>> result = agent.invoke({
+    ...     "messages": [{"role": "user", "content": "Analyze ..."}],
+    ... })
+    """
+    model = _resolve_llm(llm_type)
+    logger.info("Creating Web Researcher deep agent with llm_type=%s", llm_type)
+
+    return create_deep_agent(
+        name="Researcher",
+        model=model,
+        backend=fs_backend,
+        tools=[get_current_time, tool_cninfo_report_downloader, save_json_file],
+        system_prompt=RESEARCHER_SYSTEM_PROMPT,
+        middleware=[messageLimitMiddleware, toolCallLimitMiddleware]
+    )

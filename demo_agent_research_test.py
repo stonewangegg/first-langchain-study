@@ -4,7 +4,7 @@ Agent researcher testing
 
 import logging
 from jinja2 import Template
-from second_agents_demo import agent_researcher
+from second_agents_demo import create_researcher_agent, SUPPORTED_LLM_TYPES
 
 logging.basicConfig(
     level=logging.INFO,
@@ -35,7 +35,7 @@ if __name__ == "__main__":
     """
 
     # get the user input parameters value
-    company_name, year_start_date, year_end_date = map(str, input("Enter your target company, year_start_date, year_end_date separated by space: ").split())
+    company_name, year_start_date, year_end_date, model_str = map(str, input(f"Enter your target company, year_start_date, year_end_date, model[{SUPPORTED_LLM_TYPES}] separated by space: ").split())
 
     user_prompt_template = Template(user_prompt_test)
 
@@ -45,7 +45,7 @@ if __name__ == "__main__":
 
 
     # Invoke the agent
-    final_response = agent_researcher.invoke({"messages": [{"role": "user", "content": user_prompt_final}]})
+    final_response = create_researcher_agent(model_str).invoke({"messages": [{"role": "user", "content": user_prompt_final}]})
 
     # Print the agent's response
     logger.info("\n**Final response**: \n" + final_response["messages"][-1].content)
