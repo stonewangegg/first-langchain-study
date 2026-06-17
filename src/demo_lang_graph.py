@@ -1,15 +1,13 @@
 """
-
+The Entry point of agent graph
 """
 
 import logging
-from typing import TypedDict
 
 from jinja2 import Template
-from langgraph.graph import END, START, StateGraph
 
-from sl_finance_agent import create_researcher_agent, SUPPORTED_LLM_TYPES
-from sl_finance_agent import create_analyzer_agent
+from sl_finance_agent import SUPPORTED_LLM_TYPES
+from sl_finance_agent import CustomWorkflowState, graph_one
 
 logging.basicConfig(
     level=logging.INFO,
@@ -22,65 +20,6 @@ logging.basicConfig(
 
 # get the logger
 logger = logging.getLogger(__name__)
-
-class CustomWorkflowState(TypedDict):
-    """
-    For the parent graph, define custom shared State
-    """
-    user_query: str
-    model_str: str
-    research_result: str
-    analysis_result: str
-
-def researcher_node(state: CustomWorkflowState):
-
-    result = create_researcher_agent(state["model_str"]).invoke({
-        "messages": [
-            {
-                "role": "user",
-                "content": state["user_query"]
-            }
-        ]
-    })
-
-    return {
-        "research_result": result["messages"][-1].content
-    }
-
-def analyzer_node(state: CustomWorkflowState):
-    
-    prompt = f"""
-    Find and read the meta data json file, then review all target files with the meta data in the json file. Analyze and generate the report, write down in markdown format.
-    Reference the Research Result:
-    {state['research_result']}
-    """
-
-    result = create_analyzer_agent(state["model_str"]).invoke({
-        "messages": [
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ]
-    })
-
-    return {
-        "analysis_result": result["messages"][-1].content
-    }
-
-
-builder = StateGraph(CustomWorkflowState)
-
-builder.add_node("Researcher", researcher_node)
-builder.add_node("Analyzer", analyzer_node)
-
-builder.add_edge(START, "Researcher")
-builder.add_edge("Researcher", "Analyzer")
-builder.add_edge("Analyzer", END)
-
-graph = builder.compile()
-
-
 
 if __name__ == "__main__":
     user_prompt = """
@@ -118,6 +57,6 @@ if __name__ == "__main__":
         "analysis_result": ""
     }
 
-    result = graph.invoke(initial_state)
+    result = graph_one.invoke(initial_state)
 
     logger.info("Final result: %s", result["analysis_result"])
