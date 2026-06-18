@@ -62,7 +62,7 @@ import json
 
 from pydantic import SecretStr
 
-from cninfo_report_downloader import CNInfoReportDownloader
+from ..cninfo_report_downloader import CNInfoReportDownloader
 
 MAX_COMPLETION_TOKENS = os.environ.get("MAX_COMPLETION_TOKENS", "16384")
 
@@ -89,7 +89,7 @@ RESEARCHER_SYSTEM_PROMPT = """
 ## Core steps
 1. Make Plan: Use `get_current_time` to get current time and make a plan to list all search target files.
 2. Use `tool_cninfo_report_downloader` to download the target PDF files **One By One**, refer to the skill of "cninfo-report-downloader". 
-3. You must generate a josn file with the meta data of download PDF files.
+3. You must generate a json file with the meta data of download PDF files.
 
 ## Constraints 
 - Critical High Rule: Do not call concurrency download request with tool, You must wait the first query complete, then send the next query.
@@ -169,11 +169,11 @@ def save_json_file(
     data: Any,
 ) -> str:
     """
-    Save structured data as a JSON file in the Deep Agents workspace.
+    Save structured data as a JSON file.
 
     Args:
         file_path: Workspace-relative path.
-        data: Dict/list/object to save.
+        data: content (dict/list/object) to save.
     """
 
     content = json.dumps(

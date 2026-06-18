@@ -76,7 +76,7 @@ from langchain_core.globals import set_llm_cache
 from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
 
-from tools_file_write_read import tool_custom_file_read
+from ..tools_file_write_read import tool_custom_file_read
 
 MAX_COMPLETION_TOKENS = os.environ.get("MAX_COMPLETION_TOKENS", "16384")
 
@@ -100,8 +100,8 @@ ANALYST_SYSTEM_PROMPT = """
 ## Your goal is to review and analyze the target PDF files descriped in meta data json file.
 
 ## Core Steps
-1. Firstly: You find and review the json file to make a plan for reading target PDF files.
-2. Secondly: You use `tool_custom_file_read` to read the target PDF file **one bye one**.
+1. Firstly: You find and review the json file to make a plan for reading target PDF files one by on.
+2. Secondly: You use `tool_custom_file_read` to read one file finished and then read the next file, **Do Not allow Parallel reading**.
 3. Thirdly: Analyze and summary the content follow the skill 'senior-financial-dupont-analyst'.
 4. Finally: Generate report file with markdown format.
 
@@ -216,14 +216,11 @@ fs_backend.write(
     skill_content
 )
 
-
-
 # Supported LLM type identifiers for ``create_analyzer_agent``.
 # Pass one of these strings as the ``llm_type`` argument to choose which
 # underlying chat model the analyzer agent will use at runtime.
 SUPPORTED_LLM_TYPES = ("ollama", "vllm")
 DEFAULT_LLM_TYPE = "ollama"
-
 
 def _resolve_llm(llm_type: str):
     """Return the chat model object that corresponds to ``llm_type``.

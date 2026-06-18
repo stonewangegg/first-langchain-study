@@ -29,8 +29,8 @@ from langchain.agents.middleware import (
     ModelCallLimitMiddleware,
 )
 
-from cninfo_report_downloader import CNInfoReportDownloader
-from tools_file_write_read import tool_custom_file_read, tool_custom_file_write, tool_generate_word_doc
+from ..cninfo_report_downloader import CNInfoReportDownloader
+from ..tools_file_write_read import tool_custom_file_read, tool_custom_file_write, tool_generate_word_doc
 from .agent_system_prompt import OFFICER_SYSTEM_PROMPT, RESEARCHER_SYSTEM_PROMPT, ANALYST_SYSTEM_PROMPT
 
 # export MAX_COMPLETION_TOKENS as a passin varaible

@@ -5,6 +5,6 @@ cninfo-report-downloader
 
 __version__ = "1.0.0"
 
-from .download_cninfo_report import CNInfoReportDownloader
+from .cninfo_report_download import CNInfoReportDownloader
 
 __all__ = ["CNInfoReportDownloader"]

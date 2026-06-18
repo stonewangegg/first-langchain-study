@@ -34,8 +34,8 @@ from typing import TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
-from research_agents import create_researcher_agent
-from analyze_agents import create_analyzer_agent
+from ..research_agents import create_researcher_agent
+from ..analyze_agents import create_analyzer_agent
 
 
 logger = logging.getLogger(__name__)
