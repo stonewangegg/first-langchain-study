@@ -52,7 +52,7 @@ if __name__ == "__main__":
 
     initial_state: CustomWorkflowState = {
         "user_query": user_prompt_final,
-        "model_str": model_str,
+        "model_obj": {"model_name":model_str},
         "research_result": "",
         "analysis_result": ""
     }

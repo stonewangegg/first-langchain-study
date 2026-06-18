@@ -1,4 +1,31 @@
 """
+Graph One: Two-Stage Research and Analysis Workflow.
+
+This module defines a LangGraph :class:`StateGraph` that orchestrates a
+sequential two-agent workflow for financial analysis::
+
+    START -> Researcher -> Analyzer -> END
+
+Workflow
+--------
+1. **Researcher** node invokes the researcher agent with the user's
+   query and stores the final response in ``research_result``.
+2. **Analyzer** node receives the research output and instructs the
+   analyzer agent to locate the metadata JSON file, review the listed
+   target files, and produce a markdown-formatted analysis report,
+   which is stored in ``analysis_result``.
+
+The shared :class:`CustomWorkflowState` flows through both nodes and
+carries the user query, the model configuration, and the intermediate
+results produced by each step.
+
+The compiled graph is exposed as :data:`graph_one` and can be invoked
+directly with an initial state payload::
+
+    graph_one.invoke({
+        "user_query": "...",
+        "model_obj": {"model_name": "..."},
+    })
 """
 
 # get the logger
@@ -18,13 +45,13 @@ class CustomWorkflowState(TypedDict):
     For the parent graph, define custom shared State
     """
     user_query: str
-    model_str: str
+    model_obj: dict
     research_result: str
     analysis_result: str
 
 def researcher_node(state: CustomWorkflowState):
 
-    result = create_researcher_agent(state["model_str"]).invoke({
+    result = create_researcher_agent(state["model_obj"]["model_name"]).invoke({
         "messages": [
             {
                 "role": "user",
@@ -45,7 +72,7 @@ def analyzer_node(state: CustomWorkflowState):
     {state['research_result']}
     """
 
-    result = create_analyzer_agent(state["model_str"]).invoke({
+    result = create_analyzer_agent(state["model_obj"]["model_name"]).invoke({
         "messages": [
             {
                 "role": "user",
