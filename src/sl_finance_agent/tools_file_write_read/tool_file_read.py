@@ -69,11 +69,13 @@ def tool_custom_file_read (file_path:str) -> str:
 
         full_text = ""
         if ext==".pdf":
+            page_content = []
             for page in loader.lazy_load():
                 if not page:
                     logger.error("⚠️ Load PDF file with lazy load failed with file: %s", file_full_path)
                     return f"⚠️ Load PDF file with lazy load failed: {file_full_path}, check the passed in file!"
-                full_text = "\n\n".join(page.page_content)
+                page_content.append(page.page_content)
+            full_text = "\n\n".join(page_content)
         else:
             docs = loader.load()
             if not docs:
@@ -98,13 +100,16 @@ def tool_custom_file_read (file_path:str) -> str:
 
 if __name__ == "__main__":
 
-    test_file_path = ""
-    full_text_content = ""
+    test_file_path = "/home/stonewang/study/langchain/first-start/first-start/src/tmp/reports/2023_annual/300475_2023年年度报告.pdf"
+    full_text_content = []
     loader = PDFPlumberLoader(test_file_path)
 
     for page in loader.lazy_load():
         if not page:
             print(f"⚠️ Load PDF file with lazy load failed with file: {test_file_path}")
-        full_text_content = "\n\n".join(page.page_content)
-
-    print(f"FULL TEXT CONTENT: {full_text_content}")
+        
+        print("Page metadata: " + str(page.metadata) + "\n")
+        content = page.page_content
+        full_text_content.append(content)
+    
+    print(f"FULL TEXT CONTENT: \n\n{"\n\n".join(full_text_content)}")
