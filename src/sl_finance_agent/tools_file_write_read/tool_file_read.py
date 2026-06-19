@@ -67,15 +67,28 @@ def tool_custom_file_read (file_path:str) -> str:
         else:
             raise ValueError(f" ❌ Unsupported file type: {ext}")
 
-        docs = loader.load()
-        if not docs:
-            logger.error("⚠️ Load file failed with file: %s", file_full_path)
-            return f"⚠️ Document load file failed with file: {file_full_path}, check the passed in parameters!"
+        full_text = ""
+        if ext==".pdf":
+            for page in loader.lazy_load():
+                if not page:
+                    logger.error("⚠️ Load PDF file with lazy load failed with file: %s", file_full_path)
+                    return f"⚠️ Load PDF file with lazy load failed: {file_full_path}, check the passed in file!"
+                full_text = "\n\n".join(page.page_content)
+        else:
+            docs = loader.load()
+            if not docs:
+                logger.error("⚠️ Load file failed with file: %s", file_full_path)
+                return f"⚠️ Document load file failed with file: {file_full_path}, check the passed in parameters!"
+            full_text = "\n\n".join([page.page_content for page in docs])
         
-        full_text = "\n\n".join([doc.page_content for doc in docs])
-
-        logger.info("✅ Complete read the file: %s", file_full_path)
-        return f"Complete read the file: {file_full_path}, content is: " + full_text
+        # check the final result
+        if full_text:
+            logger.info("✅ Complete read the file: %s", file_full_path)
+            return f"Complete read the file: {file_full_path}, full content is: " + full_text
+        else:
+            logger.info("❌ Failed read the file content: %s", file_full_path)
+            return f"Failed read the file content, nothing has been read, check: {file_full_path}"
+        
 
     except Exception as e:
         logger.error("❌ Error reading file: %s, %s", file_full_path, str(e))
