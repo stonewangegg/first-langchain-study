@@ -153,7 +153,7 @@ class MessageLimitMiddleware(AgentMiddleware):
 
             if isinstance(msg, AIMessage) and msg.tool_calls:
                 for tool_call in msg.tool_calls:
-                    logger.info(f"TOOL REQUEST ==> Name: f{tool_call['name']}, ARGS: {tool_call['args']}")
+                    logger.info(f"TOOL REQUEST ==> Name: {tool_call['name']}, ARGS: {tool_call['args']}")
 
         # messages = state["messages"]
         # for i, msg in enumerate(messages):
