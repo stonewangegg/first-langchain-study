@@ -146,10 +146,10 @@ class MessageLimitMiddleware(AgentMiddleware):
         return None
 
     def after_model(self, state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
-        last_two_messages = state["messages"][-2:]
+        last_four_messages = state["messages"][-4:]
         
-        for i, msg in enumerate(last_two_messages):
-            logger.info("<------ [%s] The Model returned Message (last two) [%d]: Role=%s, Content='%s'\n", self.agent_name, i, msg.type, msg.content)
+        for i, msg in enumerate(last_four_messages):
+            logger.info("<------ [%s] The Model returned Message (last four) [%d]: Role=%s, Content='%s'\n", self.agent_name, i, msg.type, msg.content)
 
             if isinstance(msg, AIMessage) and msg.tool_calls:
                 for tool_call in msg.tool_calls:

@@ -93,3 +93,18 @@ def tool_custom_file_read (file_path:str) -> str:
     except Exception as e:
         logger.error("❌ Error reading file: %s, %s", file_full_path, str(e))
         return f"Read file faild: {file_full_path}, {str(e)}. Try to use the built-in `read_file` tool."
+
+
+
+if __name__ == "__main__":
+
+    test_file_path = ""
+    full_text_content = ""
+    loader = PDFPlumberLoader(test_file_path)
+
+    for page in loader.lazy_load():
+        if not page:
+            print(f"⚠️ Load PDF file with lazy load failed with file: {test_file_path}")
+        full_text_content = "\n\n".join(page.page_content)
+
+    print(f"FULL TEXT CONTENT: {full_text_content}")
