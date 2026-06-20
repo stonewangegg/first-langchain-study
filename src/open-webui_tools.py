@@ -1,13 +1,21 @@
 """
 Finance Assistant Tools for Open-WebUI
 """
-
-import logging
 import os
+import sys
+import logging
+
 from pathlib import Path
 from typing import Any
 
+from jinja2 import Template
+
+# add the sl_finance_agent directory to system path on runtime
+# NOTE: change it when install this tool into open-webui, get the sl_finance_agent abs path and replace below
+sys.path.append("/home/hzsto/study/langchain/first-start/src")
+
 from sl_finance_agent import CustomWorkflowState, graph_one
+from sl_finance_agent import SUPPORTED_LLM_TYPES
 
 class Tools:
 
@@ -16,8 +24,6 @@ class Tools:
 
     def __init__(self):
 
-        self.file_dir = Path(os.getcwd()) / Path("./tmp")
-
         # llm configure
         self.model_obj = {
             "model_name": os.environ.get("MODEL_NAME", "Qwen/Qwen3.6-35B-A3B-FP8"),
@@ -25,6 +31,11 @@ class Tools:
             "model_api_key": os.environ.get("MODEL_API_KEY", "local_empty")
         }
 
+        # make the file working dir if needed
+        self.file_dir = Path(os.getcwd()) / Path("./tmp")
+        if not self.file_dir.exists():
+            os.makedirs(self.file_dir, exist_ok=True)
+            self.logger.info(f"Create file work space directory: {self.file_dir}")
 
         # check and initial logging if needed
         if not Tools.__logging_initialized:
@@ -47,9 +58,7 @@ class Tools:
 
             Tools.__logging_initialized = True
 
-        if not self.file_dir.exists():
-            os.makedirs(self.file_dir, exist_ok=True)
-            self.logger.info(f"Create file work space directory: {self.file_dir}")
+        
 
     def analyzewithDupont(self, user_prompt) -> (dict[str, Any] | Any):
         """
@@ -89,3 +98,38 @@ class Tools:
         return result["analysis_result"]
 
 
+if __name__ == "__main__":
+
+    user_prompt = """
+    ## 目标上市公司: "{{company_name}}"
+
+    ## 搜索内容要求
+
+    - 首先获取当前日期
+    - 搜集周期为: "{{year_start_date}}" 至 "{{year_end_date}}"
+    - 搜索网站为：巨潮网站(www.cninfo.com.cn)
+    - 搜索并下载指定上市公司指定期间已经披露的各年年报的PDF文件
+    - 搜索并下载指定上市公司本年度最新一个季度的季报的PDF文件
+
+    ## 报告文件下载完成后，生成所有文件的 meta data 信息文件
+    """
+
+    # get the user input parameters value
+    company_name, year_start_date, year_end_date, model_str = map(
+        str, 
+        input(
+            f"Enter your target company, year_start_date, year_end_date, model[{SUPPORTED_LLM_TYPES}] separated by space: "
+        ).split()
+    )
+
+    user_prompt_template = Template(user_prompt)
+
+    user_prompt_final = user_prompt_template.render(company_name=company_name, year_start_date=year_start_date, year_end_date=year_end_date)
+
+    tools = Tools()
+
+    print("🚀 Starting the **Main Graph** workflow for: '%s'\n", user_prompt_final)
+
+    result = tools.analyzewithDupont(user_prompt_final)
+
+    print("Final result: %s", result["analysis_result"])

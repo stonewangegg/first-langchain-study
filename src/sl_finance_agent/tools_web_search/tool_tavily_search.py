@@ -14,16 +14,19 @@ Functions:
 """
 
 # get the logger
+import os
 import json
 import logging
-
-from langchain_tavily import TavilySearch
 from langchain.tools import tool
 
+# export TAVILY_API_KEY=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
+os.environ["TAVILY_API_KEY"] = "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"
+
+from langchain_tavily import TavilySearch
 
 logger = logging.getLogger(__name__)
 
-# export TAVILY_API_KEY=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
+
 # langchain tavily wrapper obejct via Tavily
 tool_tavily = TavilySearch(
     max_results=3,

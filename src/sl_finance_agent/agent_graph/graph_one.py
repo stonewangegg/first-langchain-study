@@ -85,7 +85,7 @@ def analyzer_node(state: CustomWorkflowState):
         "analysis_result": result["messages"][-1].content
     }
 
-
+# initial the lang graph builder with the CustomWorkflowState
 builder = StateGraph(CustomWorkflowState)
 
 builder.add_node("Researcher", researcher_node)

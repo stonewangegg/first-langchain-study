@@ -208,7 +208,13 @@ model_vllm.bind(
 fs_backend = FilesystemBackend(root_dir=FILE_DIR, virtual_mode=True)
 
 # Mount/copy skills into virtual filesystem
-with open(CURRENT_WORKING_DIR + "/skills/senior-financial-dupont-analyst/SKILL.md", "r", encoding="utf-8") as f:
+# 1. Get the absolute path of the directory where THIS tool script is located
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+# 2. Build the target path relative to THIS directory
+skill_target_path = os.path.join(CURRENT_DIR, "../skills/senior-financial-dupont-analyst/SKILL.md")
+# 3. (Optional but recommended) Normalize the path to remove the "../"
+skill_target_path = os.path.normpath(skill_target_path)
+with open(skill_target_path, "r", encoding="utf-8") as f:
     skill_content = f.read()
 
 fs_backend.write(
