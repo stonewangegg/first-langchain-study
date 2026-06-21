@@ -59,7 +59,7 @@ if __name__ == "__main__":
     company_name, year_start_date, year_end_date, model_str = map(
         str, 
         input(
-            "Enter your target company, year_start_date, year_end_date, separated by space: "
+            f"Enter your target company, year_start_date, year_end_date, model[{SUPPORTED_LLM_TYPES}]: separated by space: "
         ).split()
     )
 

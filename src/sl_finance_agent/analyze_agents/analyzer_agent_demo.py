@@ -69,7 +69,7 @@ from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
 
 from ..tools_file_write_read import tool_custom_file_read
-from ..agent_graph import SUPPORTED_LLM_TYPES, ModelObj
+from ..common import SUPPORTED_LLM_TYPES, ModelObj
 
 MAX_COMPLETION_TOKENS = os.environ.get("MAX_COMPLETION_TOKENS", "16384")
 

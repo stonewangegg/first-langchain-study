@@ -56,7 +56,7 @@ import json
 from pydantic import SecretStr
 
 from ..cninfo_report_downloader import CNInfoReportDownloader
-from ..agent_graph import ModelObj, SUPPORTED_LLM_TYPES
+from ..common import ModelObj, SUPPORTED_LLM_TYPES
 
 MAX_COMPLETION_TOKENS = os.environ.get("MAX_COMPLETION_TOKENS", "16384")
 
