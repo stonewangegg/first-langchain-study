@@ -1,26 +1,20 @@
 """
 Graph One: Two-Stage Research and Analysis Workflow.
 
-This module defines a LangGraph :class:`StateGraph` that orchestrates a
-sequential two-agent workflow for financial analysis::
+Defines a LangGraph :class:`StateGraph` that chains a Researcher agent
+with an Analyzer agent to produce a financial analysis report from a
+user query::
 
     START -> Researcher -> Analyzer -> END
 
-Workflow
---------
-1. **Researcher** node invokes the researcher agent with the user's
-   query and stores the final response in ``research_result``.
-2. **Analyzer** node receives the research output and instructs the
-   analyzer agent to locate the metadata JSON file, review the listed
-   target files, and produce a markdown-formatted analysis report,
-   which is stored in ``analysis_result``.
+The Researcher node runs the query through the researcher agent and
+stores the reply in ``research_result``. The Analyzer node then reads
+the metadata JSON plus its target files, using ``research_result`` as
+context, and writes a markdown report into ``analysis_result``.
 
-The shared :class:`CustomWorkflowState` flows through both nodes and
-carries the user query, the model configuration, and the intermediate
-results produced by each step.
-
-The compiled graph is exposed as :data:`graph_one` and can be invoked
-directly with an initial state payload::
+:class:`CustomWorkflowState` carries the user query, model config, and
+intermediate results across nodes. The compiled graph is exposed as
+:data:`graph_one` ::
 
     graph_one.invoke({
         "user_query": "...",

@@ -1,43 +1,36 @@
-"""
-Researcher Agent Demo Module
+"""Researcher deep-agent for fetching CNINFO financial disclosure reports.
 
-This module defines a deep research agent (``Researcher``) built on top of
-`langchain-deepagents` and powered by a local ChatOllama model. The agent is
-designed to autonomously search, download, and catalog financial disclosure
-reports (annual/quarterly PDFs) published on the *CNINFO* (巨潮资讯) platform
-for a given listed company, and persist the metadata of every downloaded file
-into a JSON manifest inside the agent's virtual workspace.
-
-* **System prompt** : ``RESEARCHER_SYSTEM_PROMPT`` instructs the agent to
-  plan, download reports one at a time (no concurrent calls), and emit a JSON
-  manifest containing at least ``title``, ``path`` and ``type`` for every
-  downloaded PDF.
+Builds a ``Researcher`` deep agent (on top of ``langchain-deepagents``) that
+autonomously plans, downloads, and catalogs annual/quarterly PDF reports for
+a listed company from the *CNINFO* (巨潮资讯) platform, then persists the
+metadata of every retrieved file as a JSON manifest inside its virtual
+workspace.
 
 Environment variables
 ---------------------
-* ``MAX_COMPLETION_TOKENS`` — context window size for the LLM (default
-  ``"16384"``).
-* ``FILE_DIR`` — sandbox directory relative to the current working directory
+* ``MAX_COMPLETION_TOKENS`` — LLM context window (default ``"16384"``).
+* ``FILE_DIR`` — sandbox directory for the agent's ``FilesystemBackend``
   (default ``"./tmp"``).
 
-Exports
--------
-* ``agent_researcher`` : the configured deep agent instance, ready to be
-  invoked with ``agent_researcher.invoke({"messages": [...]})``.
+Quickstart
+----------
+Call :func:`create_researcher_agent` with a ``ModelObj`` (see
+``sl_finance_agent.agent_graph``) and invoke the returned agent, e.g.::
 
-Usage
------
-Run this module directly or import ``agent_researcher`` from another script
-(e.g. ``demo_agent_research_test.py``) and drive it with a user request such
-as::
+    agent = create_researcher_agent(model_obj)
+    agent.invoke({"messages": [{
+        "role": "user",
+        "content": (
+            'Download the 2023 annual report of "平安银行" and the Q2 2024 '
+            'quarterly report of "000001", then write the metadata manifest '
+            'to "manifest.json".'
+        ),
+    }]})
 
-    Please download the 2023 annual report of "平安银行" and the Q2 2024
-    quarterly report of "000001", then write the metadata manifest to
-    "manifest.json".
-
-The agent will plan the downloads, fetch them sequentially through the
-``cninfo_report_downloader`` skill, and finish by writing a structured JSON
-manifest describing every successfully retrieved PDF.
+The agent plans the downloads, fetches them sequentially through the
+``tool_cninfo_report_downloader`` skill, and finishes by writing a JSON
+manifest whose entries contain at least ``title``, ``path`` and ``type`` for
+every successfully retrieved PDF.
 """
 
 # export MAX_COMPLETION_TOKENS as a passin varaible
@@ -241,7 +234,7 @@ set_llm_cache(InMemoryCache())
 # Configure the Built-in Filesystem Backend
 fs_backend = FilesystemBackend(root_dir=FILE_DIR, virtual_mode=True)
 
-# Supported LLM type identifiers for ``create_analyzer_agent``.
+# Supported LLM type identifiers for ``create_researcher_agent``.
 def _resolve_llm(model_obj: ModelObj):
     """Return the chat model object that corresponds to ``llm_type``.
 
@@ -305,13 +298,32 @@ def _resolve_llm(model_obj: ModelObj):
 def create_researcher_agent(model_obj: ModelObj):
     """Create the senior Web Researcher deep agent.
 
+    This factory wires a configured chat model (resolved from ``model_obj``)
+    into the ``Researcher`` deep agent produced by ``create_deep_agent``. The
+    agent is equipped with:
+
+    * a sandboxed ``FilesystemBackend`` (``fs_backend``) rooted at
+      ``FILE_DIR`` so the agent can read/write files inside its virtual
+      workspace;
+    * the tools ``get_current_time``, ``tool_cninfo_report_downloader`` and
+      ``save_json_file`` for fetching the current date/time, downloading
+      CNINFO disclosure PDFs and persisting structured metadata;
+    * the ``RESEARCHER_SYSTEM_PROMPT`` instructing the agent to plan,
+      download reports sequentially, and emit a JSON manifest;
+    * two middlewares: ``messageLimitMiddleware`` (caps the conversation
+      length to avoid context overflow) and ``toolCallLimitMiddleware``
+      (caps the number of ``tool_cninfo_report_downloader`` calls per run
+      to ``30``).
+
     Parameters
     ----------
-    llm_type : str, optional
-        Which underlying chat model to wire into the agent. Must be one of
-        ``"ollama"`` (default, ``ChatOllama`` against the
-        ``LOCAL_BASEURL``) or ``"vllm"`` (``ChatOpenAI`` against the
-        vLLM OpenAI-compatible endpoint at ``LOCAL_BASEURL``).
+    model_obj : ModelObj
+        A ``ModelObj`` instance describing the underlying chat model. Its
+        ``llm_type`` attribute must be one of ``SUPPORTED_LLM_TYPES``
+        (i.e. ``"ollama"`` → ``ChatOllama``, or ``"vllm"`` →
+        ``ChatOpenAI``). The ``model_name``, ``model_base_url`` and
+        ``model_api_key`` fields are forwarded to the corresponding
+        chat-model constructor.
 
     Returns
     -------
@@ -322,13 +334,24 @@ def create_researcher_agent(model_obj: ModelObj):
     Raises
     ------
     ValueError
-        If ``llm_type`` is not one of ``SUPPORTED_LLM_TYPES``.
+        If ``model_obj.llm_type`` is not one of the identifiers listed in
+        ``SUPPORTED_LLM_TYPES``.
 
     Examples
     --------
-    >>> agent = create_analyzer_agent("ollama")
+    >>> from sl_finance_agent.agent_graph import ModelObj
+    >>> model_obj = ModelObj(
+    ...     llm_type="ollama",
+    ...     model_name="qwen3.5",
+    ...     model_base_url="http://localhost:11434",
+    ...     model_api_key="",
+    ... )
+    >>> agent = create_researcher_agent(model_obj)
     >>> result = agent.invoke({
-    ...     "messages": [{"role": "user", "content": "Analyze ..."}],
+    ...     "messages": [{
+    ...         "role": "user",
+    ...         "content": "Download the 2023 annual report of 平安银行.",
+    ...     }],
     ... })
     """
     model = _resolve_llm(model_obj)
