@@ -29,8 +29,9 @@ directly with an initial state payload::
 """
 
 # get the logger
+from dataclasses import dataclass
 import logging
-from typing import TypedDict
+from typing import Optional, TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
@@ -40,18 +41,29 @@ from ..analyze_agents import create_analyzer_agent
 
 logger = logging.getLogger(__name__)
 
+# define the support model types
+SUPPORTED_LLM_TYPES = ("ollama", "vllm")
+
+@dataclass
+class ModelObj:
+    llm_type: str
+    model_name: str
+    model_base_url: str
+    model_api_key: str = "Empty"
+
+# define the custom work flow state used in the Graph
 class CustomWorkflowState(TypedDict):
     """
     For the parent graph, define custom shared State
     """
     user_query: str
-    model_obj: dict
+    model_obj: ModelObj
     research_result: str
     analysis_result: str
 
 def researcher_node(state: CustomWorkflowState):
 
-    result = create_researcher_agent(state["model_obj"]["model_name"]).invoke({
+    result = create_researcher_agent(state["model_obj"]).invoke({
         "messages": [
             {
                 "role": "user",
@@ -72,7 +84,7 @@ def analyzer_node(state: CustomWorkflowState):
     {state['research_result']}
     """
 
-    result = create_analyzer_agent(state["model_obj"]["model_name"]).invoke({
+    result = create_analyzer_agent(state["model_obj"]).invoke({
         "messages": [
             {
                 "role": "user",

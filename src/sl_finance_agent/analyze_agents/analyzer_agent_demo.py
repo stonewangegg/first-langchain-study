@@ -77,6 +77,7 @@ from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
 
 from ..tools_file_write_read import tool_custom_file_read
+from ..agent_graph import SUPPORTED_LLM_TYPES, ModelObj
 
 MAX_COMPLETION_TOKENS = os.environ.get("MAX_COMPLETION_TOKENS", "16384")
 
@@ -87,12 +88,6 @@ FILE_DIR = os.environ.get("FILE_DIR", "./tmp")
 
 # export FILE_ROOT_DIR="/your/file/root/dir"
 FILE_ROOT_DIR = str(Path(CURRENT_WORKING_DIR) / Path(FILE_DIR))
-
-# llm info
-LOCAL_MODEL="Qwen/Qwen3.6-35B-A3B-FP8"
-LOCAL_BASEURL="http://192.168.8.50:8000/v1"
-ONLINE_MODEL="minimax-m3:cloud"
-ONLINE_BASEURL="http://172.30.0.1:11434"
 
 ANALYST_SYSTEM_PROMPT = """
 # You are a senior financial analyst of a listed company.
@@ -174,36 +169,6 @@ toolCallLimitMiddleware = cast(AgentMiddleware, ToolCallLimitMiddleware(tool_nam
 # initial the cache backend for below cache=True
 set_llm_cache(InMemoryCache())
 
-# inital the model object of Ollama provider
-model_ollama = ChatOllama(
-            model=ONLINE_MODEL,
-            # validate_model_on_init=True,
-            # num_thread=16,
-            cache=True,
-            verbose=True,                       # Print additional LangChain logs.Useful for debugging: prompts, tool calls, intermediate chains
-            reasoning=False,
-            temperature=0.6,
-            base_url=ONLINE_BASEURL,
-            repeat_penalty=1.05,
-            num_ctx=int(MAX_COMPLETION_TOKENS),
-            disable_streaming="tool_calling"
-)
-
-# initial the model object that vLLM provides an OpenAI-compatible API at localhost:8000
-model_vllm = ChatOpenAI(
-    model=LOCAL_MODEL,                                # Model name (can be any vLLM-supported model)
-    base_url=LOCAL_BASEURL,                           # vLLM server endpoint         
-    api_key=SecretStr("EMPTY"),                 # vLLM uses a placeholder token
-    temperature=0.6,
-    top_p=0.9,
-    max_completion_tokens=int(MAX_COMPLETION_TOKENS)
-)
-
-# disable the llm parallel tool calls
-model_vllm.bind(
-    parallel_tool_calls=False
-)
-
 # Config the Built-in Filesystem Backend
 fs_backend = FilesystemBackend(root_dir=FILE_DIR, virtual_mode=True)
 
@@ -223,12 +188,7 @@ fs_backend.write(
 )
 
 # Supported LLM type identifiers for ``create_analyzer_agent``.
-# Pass one of these strings as the ``llm_type`` argument to choose which
-# underlying chat model the analyzer agent will use at runtime.
-SUPPORTED_LLM_TYPES = ("ollama", "vllm")
-DEFAULT_LLM_TYPE = "ollama"
-
-def _resolve_llm(llm_type: str):
+def _resolve_llm(model_obj: ModelObj):
     """Return the chat model object that corresponds to ``llm_type``.
 
     Parameters
@@ -249,17 +209,45 @@ def _resolve_llm(llm_type: str):
     ValueError
         If ``llm_type`` is not one of the supported identifiers.
     """
-    if llm_type == "ollama":
+    if model_obj.llm_type == "ollama":
+        # inital the model object of Ollama provider
+        model_ollama = ChatOllama(
+            model=model_obj.model_name,
+            # validate_model_on_init=True,
+            # num_thread=16,
+            cache=True,
+            verbose=True,                       # Print additional LangChain logs.Useful for debugging: prompts, tool calls, intermediate chains
+            reasoning=False,
+            temperature=0.5,
+            base_url=model_obj.model_base_url,
+            repeat_penalty=1.05,
+            num_ctx=int(MAX_COMPLETION_TOKENS),
+            disable_streaming="tool_calling"
+        )
         return model_ollama
-    if llm_type == "vllm":
+    if model_obj.llm_type == "vllm":
+        # initial the model object that vLLM provides an OpenAI-compatible API at localhost:8000
+        model_vllm = ChatOpenAI(
+            model=model_obj.model_name,                 # Model name (can be any vLLM-supported model)
+            base_url=model_obj.model_base_url,          # vLLM server endpoint         
+            api_key=SecretStr(model_obj.model_api_key), # vLLM uses a placeholder token
+            temperature=0.4,
+            top_p=0.9,
+            max_completion_tokens=int(MAX_COMPLETION_TOKENS)
+        )
+
+        # disable the llm parallel tool calls
+        model_vllm.bind(
+            parallel_tool_calls=False
+        )
         return model_vllm
     raise ValueError(
-        f"Unsupported llm_type: {llm_type!r}. "
+        f"Unsupported llm: {model_obj}. "
         f"Expected one of: {', '.join(SUPPORTED_LLM_TYPES)}"
     )
 
 
-def create_analyzer_agent(llm_type: str = DEFAULT_LLM_TYPE):
+def create_analyzer_agent(model_obj: ModelObj):
     """Create the senior financial analyst deep agent.
 
     Parameters
@@ -288,8 +276,8 @@ def create_analyzer_agent(llm_type: str = DEFAULT_LLM_TYPE):
     ...     "messages": [{"role": "user", "content": "Analyze ..."}],
     ... })
     """
-    model = _resolve_llm(llm_type)
-    logger.info("Creating Analyzer deep agent with llm_type=%s", llm_type)
+    model = _resolve_llm(model_obj)
+    logger.info("Creating Analyzer deep agent with llm_type=%s", model_obj)
 
     return create_deep_agent(
         name="Analyzer",

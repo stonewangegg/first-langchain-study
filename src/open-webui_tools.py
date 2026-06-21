@@ -14,8 +14,7 @@ from jinja2 import Template
 # NOTE: change it when install this tool into open-webui, get the sl_finance_agent abs path and replace below
 sys.path.append("/home/hzsto/study/langchain/first-start/src")
 
-from sl_finance_agent import CustomWorkflowState, graph_one
-from sl_finance_agent import SUPPORTED_LLM_TYPES
+from sl_finance_agent import CustomWorkflowState, graph_one, ModelObj
 
 class Tools:
 
@@ -25,11 +24,12 @@ class Tools:
     def __init__(self):
 
         # llm configure
-        self.model_obj = {
-            "model_name": os.environ.get("MODEL_NAME", "Qwen/Qwen3.6-35B-A3B-FP8"),
-            "model_base_url": os.environ.get("MODEL_BASE_URL", "http://192.168.8.50:8000/v1"),
-            "model_api_key": os.environ.get("MODEL_API_KEY", "local_empty")
-        }
+        self.model_obj = ModelObj(
+            llm_type = "vllm",
+            model_name = os.environ.get("MODEL_NAME", "Qwen/Qwen3.6-35B-A3B-FP8"),
+            model_base_url =  os.environ.get("MODEL_BASE_URL", "http://192.168.8.50:8000/v1"),
+            model_api_key = os.environ.get("MODEL_API_KEY", "local_empty")
+        )
 
         # make the file working dir if needed
         self.file_dir = Path(os.getcwd()) / Path("./tmp")
@@ -58,8 +58,6 @@ class Tools:
 
             Tools.__logging_initialized = True
 
-        
-
     def analyzewithDupont(self, user_prompt) -> (dict[str, Any] | Any):
         """
         Run the full Research -> Analyzer workflow on the user's prompt.
@@ -82,7 +80,6 @@ class Tools:
             typically a markdown-formatted report produced by the
             Analyzer node.
         """
-
         self.logger.info("🚀 Starting the **Main Graph** workflow for: '%s'\n", user_prompt)
 
         initial_state: CustomWorkflowState = {
@@ -115,10 +112,10 @@ if __name__ == "__main__":
     """
 
     # get the user input parameters value
-    company_name, year_start_date, year_end_date, model_str = map(
+    company_name, year_start_date, year_end_date = map(
         str, 
         input(
-            f"Enter your target company, year_start_date, year_end_date, model[{SUPPORTED_LLM_TYPES}] separated by space: "
+            "Enter your target company, year_start_date, year_end_date, separated by space: "
         ).split()
     )
 
