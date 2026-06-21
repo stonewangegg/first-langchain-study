@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 
 from pydantic import BaseModel
-from sl_finance_agent import CustomWorkflowState, graph_one
+from sl_finance_agent import CustomWorkflowState, graph_one, ModelObj
 
 
 class Pipe:
@@ -23,11 +23,12 @@ class Pipe:
         self.file_dir = Path(os.getcwd()) / Path("./tmp")
 
         # llm configure
-        self.model_obj = {
-            "model_name": os.environ.get("MODEL_NAME", "Qwen/Qwen3.6-35B-A3B-FP8"),
-            "model_base_url": os.environ.get("MODEL_BASE_URL", "http://192.168.8.50:8000/v1"),
-            "model_api_key": os.environ.get("MODEL_API_KEY", "local_empty")
-        }
+        self.model_obj = ModelObj(
+            llm_type = "vllm",
+            model_name = os.environ.get("MODEL_NAME", "Qwen/Qwen3.6-35B-A3B-FP8"),
+            model_base_url =  os.environ.get("MODEL_BASE_URL", "http://192.168.8.50:8000/v1"),
+            model_api_key = os.environ.get("MODEL_API_KEY", "local_empty")
+        )
 
 
         # check and initial logging if needed
