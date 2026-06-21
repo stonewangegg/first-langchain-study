@@ -1,61 +1,53 @@
-"""
-Analyzer Agent Demo: Senior Financial Analyst Deep Agent
+"""Analyzer Agent Demo: Senior Financial Analyst Deep Agent.
 
-This module demonstrates how to build a **LangChain Deep Agent** that acts as a
-senior financial analyst for a listed company. The agent is designed to review
-and analyze target PDF files (e.g. annual / quarterly reports) described by a
-metadata JSON file, and to produce a structured Markdown analysis report using
-the *DuPont analysis* methodology.
+Builds a :func:`create_deep_agent`-backed deep agent that acts as a senior
+financial analyst for a listed company: it reviews the target PDF files
+described by a metadata JSON file and emits a Markdown report using the
+``senior-financial-dupont-analyst`` skill (DuPont methodology).
 
-Key Features
-------------
-* **Deep Agent orchestration** — built on top of ``deepagents.create_deep_agent``
-  with a virtual ``FilesystemBackend`` for file I/O isolation.
-* **Custom tooling** — exposes ``get_current_time`` and a project-specific
-  ``tool_custom_file_read`` tool so the agent can inspect PDF documents.
-* **Skill mounting** — copies the ``senior-financial-dupont-analyst`` skill
-  (see ``skills/senior-financial-dupont-analyst/SKILL.md``) into the agent's
-  virtual filesystem so it is available at runtime.
-* **Safety guard-rails** — two middleware components are attached to the
-  agent:
-    - ``MessageLimitMiddleware`` — aborts the run with a clear message once
-      the conversation history exceeds ``max_messages`` (default 50).
-    - ``ToolCallLimitMiddleware`` — caps calls to ``tool_custom_file_read``
-      at 30 invocations per run to prevent runaway tool usage.
-* **Local LLM via Ollama** — configurable through the ``ONLINE_MODEL`` /
-  ``LOCAL_MODEL`` and ``ONLINE_BASEURL`` / ``LOCAL_BASEURL`` constants; the
-  context window size is controlled by the ``MAX_COMPLETION_TOKENS``
-  environment variable (default ``"16384"``).
+Public surface
+--------------
+* :func:`create_analyzer_agent` -- factory that returns the compiled deep
+  agent, configured with the :class:`FilesystemBackend` sandbox, tools,
+  mounted skill and safety middleware.
+* :func:`_resolve_llm`         -- maps a :class:`ModelObj` to a concrete
+  ``ChatOllama`` or ``ChatOpenAI`` instance.
+* :class:`MessageLimitMiddleware` -- guards against runaway conversation
+  length by jumping to ``END`` once ``max_messages`` is reached.
 
 Configuration
 -------------
-The following environment variables are honored:
+Environment variables (read at import time):
 
-* ``MAX_COMPLETION_TOKENS`` — context window size for the chat model.
-* ``FILE_DIR``              — directory (relative to the current working
-                              directory) that will be exposed to the
-                              ``FilesystemBackend`` (default ``"./tmp"``).
+* ``MAX_COMPLETION_TOKENS`` -- context window size for the chat model
+  (default ``"16384"``).
+* ``FILE_DIR``              -- directory that backs the sandbox exposed to
+  the agent via ``FilesystemBackend`` (default ``"./tmp"``).
 
 Usage
 -----
-This module is intended to be imported by test/entry-point scripts such as
-``demo_agent_analyze_test.py``. It can also be run directly to perform a
-smoke test, but typically the agent is invoked programmatically:
+Import ``create_analyzer_agent`` and invoke the returned agent with a
+``{"messages": [...]}`` payload::
 
-    from third_agents_demo.analyzer_agent_demo import agent_analyzer
+    from sl_finance_agent.agent_graph import ModelObj
+    from sl_finance_agent.analyze_agents.analyzer_agent_demo import (
+        create_analyzer_agent,
+    )
 
-    result = agent_analyzer.invoke({
-        "messages": [{"role": "user", "content": "..."}],
-    })
+    agent = create_analyzer_agent(ModelObj(
+        llm_type="ollama",
+        model_name="llama3",
+        model_base_url="http://localhost:11434",
+    ))
+    result = agent.invoke({"messages": [{"role": "user", "content": "..."}]})
 
 Notes
 -----
-* ``virtual_mode=True`` on the backend means the agent cannot escape the
-  ``FILE_DIR`` sandbox; all file operations are translated to safe virtual
-  paths.
-* The DuPont skill content is read at import time from
-  ``<cwd>/skills/senior-financial-dupont-analyst/SKILL.md`` and must exist
-  for the module to import successfully.
+* ``FilesystemBackend`` is mounted with ``virtual_mode=True``, so all file
+  operations are translated into safe virtual paths inside ``FILE_DIR``.
+* The DuPont skill bundle is read at import time from
+  ``<this-dir>/../skills/senior-financial-dupont-analyst/SKILL.md`` and
+  must exist for the module to import successfully.
 """
 
 from datetime import datetime
@@ -189,25 +181,36 @@ fs_backend.write(
 
 # Supported LLM type identifiers for ``create_analyzer_agent``.
 def _resolve_llm(model_obj: ModelObj):
-    """Return the chat model object that corresponds to ``llm_type``.
+    """Resolve a ``ModelObj`` into a configured chat model.
+
+    Maps ``model_obj.llm_type`` to a concrete chat model instance:
+
+    * ``"ollama"`` -> :class:`ChatOllama` against ``model_base_url``.
+    * ``"vllm"``   -> :class:`ChatOpenAI` against the vLLM
+      OpenAI-compatible endpoint at ``model_base_url`` (with parallel
+      tool calls disabled).
+
+    The context window size for both providers is driven by the
+    ``MAX_COMPLETION_TOKENS`` environment variable.
 
     Parameters
     ----------
-    llm_type : str
-        Identifier of the chat model to use. Must be one of
-        ``SUPPORTED_LLM_TYPES`` (i.e. ``"ollama"`` or
-        ``"vllm"``).
+    model_obj : ModelObj
+        Dataclass specifying the provider (``llm_type``), ``model_name``,
+        ``model_base_url`` and optional ``model_api_key``. See
+        ``create_analyzer_agent`` for field-level documentation.
 
     Returns
     -------
     BaseChatModel
-        The configured chat model instance (``ChatOllama`` or
-        ``ChatOpenAI``) to plug into the deep agent.
+        The configured chat model (``ChatOllama`` or ``ChatOpenAI``)
+        ready to plug into the deep agent.
 
     Raises
     ------
     ValueError
-        If ``llm_type`` is not one of the supported identifiers.
+        If ``model_obj.llm_type`` is not one of ``SUPPORTED_LLM_TYPES``
+        (i.e. not ``"ollama"`` or ``"vllm"``).
     """
     if model_obj.llm_type == "ollama":
         # inital the model object of Ollama provider
@@ -250,28 +253,59 @@ def _resolve_llm(model_obj: ModelObj):
 def create_analyzer_agent(model_obj: ModelObj):
     """Create the senior financial analyst deep agent.
 
+    This factory builds a ``deepagents`` deep agent that reviews the
+    target PDF files described by the metadata JSON file and emits a
+    structured Markdown analysis report using the
+    ``senior-financial-dupont-analyst`` skill. The agent is configured
+    with a :class:`FilesystemBackend` sandbox rooted at ``FILE_DIR``,
+    ``get_current_time`` and ``tool_custom_file_read`` tools, the
+    mounted skill bundle, and the safety middleware
+    (``MessageLimitMiddleware`` and ``ToolCallLimitMiddleware``).
+
     Parameters
     ----------
-    llm_type : str, optional
-        Which underlying chat model to wire into the agent. Must be one of
-        ``"ollama"`` (default, ``ChatOllama`` against the
-        ``LOCAL_BASEURL``) or ``"vllm"`` (``ChatOpenAI`` against the
-        vLLM OpenAI-compatible endpoint at ``LOCAL_BASEURL``).
+    model_obj : ModelObj
+        Dataclass that specifies which chat model the agent should use.
+        Must contain the following fields:
+
+        * ``llm_type`` (``str``) -- identifier of the provider. Must be
+          one of ``SUPPORTED_LLM_TYPES`` (``"ollama"`` or ``"vllm"``).
+          When ``"ollama"``, a :class:`ChatOllama` instance is built
+          against ``model_base_url``; when ``"vllm"``, a
+          :class:`ChatOpenAI` instance is built against the vLLM
+          OpenAI-compatible endpoint at ``model_base_url``.
+        * ``model_name`` (``str``) -- the model name to instantiate
+          (e.g. ``"llama3"`` for Ollama, ``"Qwen/Qwen2.5-..."`` for
+          vLLM).
+        * ``model_base_url`` (``str``) -- base URL of the chat model
+          endpoint (``ChatOllama`` base URL or vLLM OpenAI-compatible
+          endpoint).
+        * ``model_api_key`` (``str``, optional) -- API key for the
+          provider. Defaults to ``"Empty"``; vLLM uses a placeholder
+          token.
 
     Returns
     -------
     CompiledStateGraph
-        The deep agent instance produced by ``create_deep_agent``, ready
-        to be invoked with a ``{"messages": [...]}`` input payload.
+        The deep agent instance produced by ``create_deep_agent``,
+        ready to be invoked with a ``{"messages": [...]}`` input
+        payload.
 
     Raises
     ------
     ValueError
-        If ``llm_type`` is not one of ``SUPPORTED_LLM_TYPES``.
+        If ``model_obj.llm_type`` is not one of ``SUPPORTED_LLM_TYPES``
+        (i.e. not ``"ollama"`` or ``"vllm"``).
 
     Examples
     --------
-    >>> agent = create_analyzer_agent("ollama")
+    >>> from sl_finance_agent.agent_graph import ModelObj
+    >>> model_obj = ModelObj(
+    ...     llm_type="ollama",
+    ...     model_name="llama3",
+    ...     model_base_url="http://localhost:11434",
+    ... )
+    >>> agent = create_analyzer_agent(model_obj)
     >>> result = agent.invoke({
     ...     "messages": [{"role": "user", "content": "Analyze ..."}],
     ... })
