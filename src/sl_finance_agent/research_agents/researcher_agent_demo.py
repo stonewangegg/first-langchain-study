@@ -270,7 +270,7 @@ def _resolve_llm(model_obj: ModelObj):
             # validate_model_on_init=True,
             # num_thread=16,
             cache=True,
-            verbose=True,                       # Print additional LangChain logs.Useful for debugging: prompts, tool calls, intermediate chains
+            verbose=True,     # Print additional LangChain logs.Useful for debugging: prompts, tool calls, intermediate chains
             reasoning=False,
             temperature=0.5,
             base_url=model_obj.model_base_url,
