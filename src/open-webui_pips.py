@@ -1,18 +1,15 @@
 """
+Pip agent for Open webUI framework 
 """
 
-import logging
 import os
 from pathlib import Path
 
 from pydantic import BaseModel
-from sl_finance_agent import CustomWorkflowState, graph_one, ModelObj
+from sl_finance_agent import CustomWorkflowState, graph_one, ModelObj, get_logger
 
 
 class Pipe:
-
-    # the logging initialization flag
-    __logging_initialized = False
 
     class Valves(BaseModel):
         pass
@@ -20,6 +17,7 @@ class Pipe:
     def __init__(self):
         self.valves = self.Valves()
 
+        self.logger = get_logger(__name__)
         self.file_dir = Path(os.getcwd()) / Path("./tmp")
 
         # llm configure
@@ -29,28 +27,6 @@ class Pipe:
             model_base_url =  os.environ.get("MODEL_BASE_URL", "http://192.168.8.50:8000/v1"),
             model_api_key = os.environ.get("MODEL_API_KEY", "local_empty")
         )
-
-
-        # check and initial logging if needed
-        if not Pipe.__logging_initialized:
-
-            self.logger = logging.getLogger("tools_finance_assistant")
-
-            if not self.logger.handlers:
-                formatter = logging.Formatter(
-                    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-                )
-                file_handler = logging.FileHandler("./tmp/tools_finance_assistant.log")
-                file_handler.setFormatter(formatter)
-                stream_handler = logging.StreamHandler()
-                stream_handler.setFormatter(formatter)
-                
-                self.logger.addHandler(file_handler)
-                self.logger.addHandler(stream_handler)
-
-                self.logger.setLevel(logging.INFO)
-
-            Pipe.__logging_initialized = True
 
         if not self.file_dir.exists():
             os.makedirs(self.file_dir, exist_ok=True)

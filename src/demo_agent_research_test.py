@@ -2,21 +2,11 @@
 Agent researcher testing
 """
 
-import logging
 from jinja2 import Template
-from sl_finance_agent import create_researcher_agent, SUPPORTED_LLM_TYPES, model_factory
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.FileHandler("demo_agent_research_test.log"),
-        logging.StreamHandler()
-    ]
-)
+from sl_finance_agent import create_researcher_agent, SUPPORTED_LLM_TYPES, model_factory, get_logger
 
 # get the logger
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 if __name__ == "__main__":
 

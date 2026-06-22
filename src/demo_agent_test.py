@@ -1,23 +1,11 @@
 """
 The testing suite for fisrt demo agents
 """
-
-import logging
-
 from langchain_core.runnables import RunnableConfig
 
 from jinja2 import Template
 
 from sl_finance_agent import agent_collaborator
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.FileHandler("first_demo_agent.log"),
-        logging.StreamHandler()
-    ]
-)
 
 if __name__ == "__main__":
 
