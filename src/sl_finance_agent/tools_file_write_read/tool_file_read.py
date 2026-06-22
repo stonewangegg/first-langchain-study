@@ -14,8 +14,6 @@ A module-level logger (``logging.getLogger(__name__)``) is used to report succes
 and any errors encountered while loading, parsing, or retrieving content.
 """
 
-# get the logger
-import logging
 import os
 from pathlib import Path
 
@@ -25,7 +23,8 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
 
-logger = logging.getLogger(__name__)
+from ..common import get_logger
+logger = get_logger(__name__)
 
 FILE_DIR = os.environ.get("FILE_DIR", "./tmp")
 
@@ -93,7 +92,7 @@ def tool_custom_file_read (file_path:str) -> str:
 
     except Exception as e:
         logger.error("❌ Error reading file: %s, %s", file_full_path, str(e))
-        return f"Read file faild: {file_full_path}, {str(e)}. Try to use the built-in `read_file` tool."
+        return f"Read file faild: {file_full_path}, {str(e)}. Try to change using the built-in `read_file` tool."
     
 @tool
 def tool_lightRAG_large_file_read(pdf_file_path:str) -> str:

@@ -13,14 +13,13 @@ SEARX_HOST
 
 # get the logger
 import json
-import logging
 import os
 
 from langchain.tools import tool
 from langchain_community.utilities import SearxSearchWrapper
 
-
-logger = logging.getLogger(__name__)
+from ..common import get_logger
+logger = get_logger(__name__)
 
 # Configuration: export SEARX_HOST=http://192.168.8.50:8080
 SEARX_HOST = os.environ.get("SEARX_HOST", "http://192.168.8.50:8080")

@@ -51,7 +51,6 @@ Notes
 """
 
 from datetime import datetime
-import logging
 import os
 from pathlib import Path
 from typing import Any, cast
@@ -69,7 +68,7 @@ from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
 
 from ..tools_file_write_read import tool_custom_file_read
-from ..common import SUPPORTED_LLM_TYPES, ModelObj
+from ..common import SUPPORTED_LLM_TYPES, ModelObj, get_logger
 
 MAX_COMPLETION_TOKENS = os.environ.get("MAX_COMPLETION_TOKENS", "16384")
 
@@ -98,7 +97,7 @@ ANALYST_SYSTEM_PROMPT = """
 """
 
 # get the logger
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # assistant function
 @tool

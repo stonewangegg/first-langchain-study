@@ -16,7 +16,6 @@ Functions:
 # get the logger
 import os
 import json
-import logging
 from langchain.tools import tool
 
 # export TAVILY_API_KEY=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
@@ -24,7 +23,8 @@ os.environ["TAVILY_API_KEY"] = "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
 
 from langchain_tavily import TavilySearch
 
-logger = logging.getLogger(__name__)
+from ..common import get_logger
+logger = get_logger(__name__)
 
 
 # langchain tavily wrapper obejct via Tavily

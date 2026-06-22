@@ -33,7 +33,6 @@ they can be registered directly with a LangChain agent::
     )
 """
 
-import logging
 import os
 import re
 import time
@@ -43,7 +42,8 @@ from langchain.tools import tool
 from langchain_community.tools import WriteFileTool
 from pydantic import BaseModel, Field, field_validator
 
-logger = logging.getLogger(__name__)
+from ..common import get_logger
+logger = get_logger(__name__)
 
 FILE_ROOT_DIR = os.environ.get("FILE_ROOT_DIR", os.getcwd())
 

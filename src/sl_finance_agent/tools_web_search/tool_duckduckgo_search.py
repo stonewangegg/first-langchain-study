@@ -10,14 +10,13 @@ specific file types (for example PDFs) by appending a ``filetype:`` hint to
 the query.
 """
 
-import logging
-
 from langchain.tools import tool
 from langchain_community.tools import DuckDuckGoSearchResults
 from langchain_community.utilities import DuckDuckGoSearchAPIWrapper
 
+from ..common import get_logger
 # get the logger
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # LangChain communication search tool
 @tool

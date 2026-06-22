@@ -22,8 +22,6 @@ intermediate results across nodes. The compiled graph is exposed as
     })
 """
 
-# get the logger
-import logging
 from typing import Optional, TypedDict
 
 from langgraph.graph import END, START, StateGraph
@@ -31,10 +29,10 @@ from langgraph.graph import END, START, StateGraph
 from ..research_agents import create_researcher_agent
 from ..analyze_agents import create_analyzer_agent
 
-from ..common import ModelObj
+from ..common import ModelObj, get_logger
 
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # define the custom work flow state used in the Graph
 class CustomWorkflowState(TypedDict):

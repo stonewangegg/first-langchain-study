@@ -7,7 +7,6 @@ requirements: deepagents, langchain_openai, langchain.tools, pydantic, tavily, t
 version: 0.1
 """
 import os
-import logging
 from pathlib import Path
 from pydantic import SecretStr
 from typing import Literal, Any, cast
@@ -33,6 +32,10 @@ from ..cninfo_report_downloader import CNInfoReportDownloader
 from ..tools_file_write_read import tool_custom_file_read, tool_custom_file_write, tool_generate_word_doc
 from .agent_system_prompt import OFFICER_SYSTEM_PROMPT, RESEARCHER_SYSTEM_PROMPT, ANALYST_SYSTEM_PROMPT
 
+from ..common import get_logger
+# get the logger
+logger = get_logger(__name__)
+
 # export MAX_COMPLETION_TOKENS as a passin varaible
 MAX_COMPLETION_TOKENS = os.environ.get("MAX_COMPLETION_TOKENS", "16384")
 
@@ -42,8 +45,7 @@ CURRENT_WORKING_DIR = os.getcwd()
 # export FILE_ROOT_DIR="your/file/root/dir"
 FILE_ROOT_DIR = os.environ.get("FILE_ROOT_DIR", CURRENT_WORKING_DIR)
 
-# get the logger
-logger = logging.getLogger(__name__)
+
 
 # Tool of the special annual report pdf file search and download
 @tool

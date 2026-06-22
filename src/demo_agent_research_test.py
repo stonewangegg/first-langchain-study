@@ -4,7 +4,7 @@ Agent researcher testing
 
 import logging
 from jinja2 import Template
-from sl_finance_agent import create_researcher_agent, SUPPORTED_LLM_TYPES
+from sl_finance_agent import create_researcher_agent, SUPPORTED_LLM_TYPES, model_factory
 
 logging.basicConfig(
     level=logging.INFO,
@@ -44,8 +44,12 @@ if __name__ == "__main__":
     logger.info("🚀 Starting the Main Agent workflow for: '%s'...\n", user_prompt_final)
 
 
-    # Invoke the agent
-    final_response = create_researcher_agent(model_str).invoke({"messages": [{"role": "user", "content": user_prompt_final}]})
+    model_obj = model_factory(model_str)
 
-    # Print the agent's response
-    logger.info("\n**Final response**: \n" + final_response["messages"][-1].content)
+    # Invoke the agent
+    if model_obj:
+        # Invoke the agent
+        final_response = create_researcher_agent(model_obj).invoke({"messages": [{"role": "user", "content": user_prompt_final}]})
+
+        # Print the agent's response
+        logger.info("\n**Final response**: \n" + final_response["messages"][-1].content)

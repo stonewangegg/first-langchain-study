@@ -35,7 +35,6 @@ every successfully retrieved PDF.
 
 # export MAX_COMPLETION_TOKENS as a passin varaible
 from datetime import datetime
-import logging
 import os
 from pathlib import Path
 from typing import Any, Literal, cast
@@ -56,7 +55,7 @@ import json
 from pydantic import SecretStr
 
 from ..cninfo_report_downloader import CNInfoReportDownloader
-from ..common import ModelObj, SUPPORTED_LLM_TYPES
+from ..common import ModelObj, SUPPORTED_LLM_TYPES, get_logger
 
 MAX_COMPLETION_TOKENS = os.environ.get("MAX_COMPLETION_TOKENS", "16384")
 
@@ -87,7 +86,7 @@ RESEARCHER_SYSTEM_PROMPT = """
 """
 
 # get the logger
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Tool of the special annual report pdf file search and download
 @tool

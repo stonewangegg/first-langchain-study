@@ -9,14 +9,14 @@ import requests
 import re
 import os
 import argparse
-import logging
 from bs4 import BeautifulSoup
 from urllib.parse import quote
 from typing import Literal, Any
 from pathlib import Path
 
+from ..common import get_logger
 # get the logger
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 class CNInfoReportDownloader:
     """
@@ -206,6 +206,7 @@ class CNInfoReportDownloader:
                 if 'response' in locals() and response: # type: ignore
                     logger.debug("响应内容: %s", response.text[:500])
             except Exception as ee:
+                logger.error("打印响应内容失败: %s", str(ee))
                 pass
             return ""
 

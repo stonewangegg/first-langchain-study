@@ -8,27 +8,24 @@ import sys
 # NOTE: change it when install this tool into open-webui, get the sl_finance_agent abs path and replace below
 sys.path.append("/home/hzsto/study/langchain/first-start/src")
 
-import logging
-
 from pathlib import Path
 from typing import Any
 from jinja2 import Template
 
-from sl_finance_agent import CustomWorkflowState, graph_one, ModelObj
+from sl_finance_agent import CustomWorkflowState, graph_one, ModelObj, get_logger
 
 class Tools:
 
-    # the logging initialization flag
-    __logging_initialized = False
-
     def __init__(self):
+
+        self.logger = get_logger(__name__)
 
         # llm configure
         self.model_obj = ModelObj(
             llm_type = "vllm",
             model_name = os.environ.get("MODEL_NAME", "Qwen/Qwen3.6-35B-A3B-FP8"),
             model_base_url =  os.environ.get("MODEL_BASE_URL", "http://192.168.8.50:8000/v1"),
-            model_api_key = os.environ.get("MODEL_API_KEY", "local_empty")
+            model_api_key = os.environ.get("MODEL_API_KEY", "empty")
         )
 
         # make the file working dir if needed
@@ -37,26 +34,7 @@ class Tools:
             os.makedirs(self.file_dir, exist_ok=True)
             self.logger.info(f"Create file work space directory: {self.file_dir}")
 
-        # check and initial logging if needed
-        if not Tools.__logging_initialized:
-
-            self.logger = logging.getLogger("tools_finance_assistant")
-
-            if not self.logger.handlers:
-                formatter = logging.Formatter(
-                    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-                )
-                file_handler = logging.FileHandler("./tmp/tools_finance_assistant.log")
-                file_handler.setFormatter(formatter)
-                stream_handler = logging.StreamHandler()
-                stream_handler.setFormatter(formatter)
-                
-                self.logger.addHandler(file_handler)
-                self.logger.addHandler(stream_handler)
-
-                self.logger.setLevel(logging.INFO)
-
-            Tools.__logging_initialized = True
+        
 
     def run_agent_analyzewithDupont(self, user_prompt) -> (dict[str, Any] | Any):
         """
@@ -80,7 +58,7 @@ class Tools:
             typically a markdown-formatted report produced by the
             Analyzer node.
         """
-        self.logger.info("🚀 Starting the **Main Graph** workflow for: '%s'\n", user_prompt)
+        self.logger.info("🚀 Starting the **Main Graph** workflow for: '%s'\n\nTo the model: '%s'", user_prompt, self.model_obj)
 
         initial_state: CustomWorkflowState = {
             "user_query": user_prompt,
@@ -124,8 +102,6 @@ if __name__ == "__main__":
     user_prompt_final = user_prompt_template.render(company_name=company_name, year_start_date=year_start_date, year_end_date=year_end_date)
 
     tools = Tools()
-
-    print("🚀 Starting the **Main Graph** workflow for: '%s'\n", user_prompt_final)
 
     result = tools.run_agent_analyzewithDupont(user_prompt_final)
 

@@ -2,21 +2,17 @@
 Agent analyzer testing
 """
 
-import logging
+from sl_finance_agent import create_analyzer_agent, SUPPORTED_LLM_TYPES, get_logger, model_factory
 
-from sl_finance_agent import create_analyzer_agent, SUPPORTED_LLM_TYPES
+# llm info
+LOCAL_MODEL="Qwen/Qwen3.6-35B-A3B-FP8"
+LOCAL_BASEURL="http://192.168.8.50:8000/v1"
+ONLINE_MODEL="minimax-m3:cloud"
+ONLINE_BASEURL="http://172.30.0.1:11434"
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.FileHandler("demo_agent_analyze_test.log"),
-        logging.StreamHandler()
-    ]
-)
 
 # get the logger
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 if __name__ == "__main__":
 
@@ -27,8 +23,11 @@ if __name__ == "__main__":
     """
     logger.info("🚀 Starting the Main Agent workflow for: '%s'...\n", user_prompt_test)
 
-    # Invoke the agent
-    final_response = create_analyzer_agent(model_str).invoke({"messages": [{"role": "user", "content": user_prompt_test}]})
+    model_obj = model_factory(model_str)
 
-    # Print the agent's response
-    logger.info("\n**Final response**: \n" + final_response["messages"][-1].content)
+    # Invoke the agent
+    if model_obj:
+        final_response = create_analyzer_agent(model_obj).invoke({"messages": [{"role": "user", "content": user_prompt_test}]})
+
+        # Print the agent's response
+        logger.info("\n**Final response**: \n" + final_response["messages"][-1].content)
