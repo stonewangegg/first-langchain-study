@@ -12,7 +12,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
-        logging.FileHandler("demo_lang_graph_test.log"),
+        logging.FileHandler("./tmp/demo_lang_graph_test.log"),
         logging.StreamHandler()
     ]
 )

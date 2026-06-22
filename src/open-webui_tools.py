@@ -3,16 +3,16 @@ Finance Assistant Tools for Open-WebUI
 """
 import os
 import sys
-import logging
-
-from pathlib import Path
-from typing import Any
-
-from jinja2 import Template
 
 # add the sl_finance_agent directory to system path on runtime
 # NOTE: change it when install this tool into open-webui, get the sl_finance_agent abs path and replace below
 sys.path.append("/home/hzsto/study/langchain/first-start/src")
+
+import logging
+
+from pathlib import Path
+from typing import Any
+from jinja2 import Template
 
 from sl_finance_agent import CustomWorkflowState, graph_one, ModelObj
 
@@ -58,7 +58,7 @@ class Tools:
 
             Tools.__logging_initialized = True
 
-    def analyzewithDupont(self, user_prompt) -> (dict[str, Any] | Any):
+    def run_agent_analyzewithDupont(self, user_prompt) -> (dict[str, Any] | Any):
         """
         Run the full Research -> Analyzer workflow on the user's prompt.
 
@@ -127,6 +127,6 @@ if __name__ == "__main__":
 
     print("🚀 Starting the **Main Graph** workflow for: '%s'\n", user_prompt_final)
 
-    result = tools.analyzewithDupont(user_prompt_final)
+    result = tools.run_agent_analyzewithDupont(user_prompt_final)
 
     print("Final result: %s", result["analysis_result"])
