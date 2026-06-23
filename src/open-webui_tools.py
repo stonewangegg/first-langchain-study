@@ -34,31 +34,55 @@ class Tools:
             os.makedirs(self.file_dir, exist_ok=True)
             self.logger.info(f"Create file work space directory: {self.file_dir}")
 
-        
-
-    def run_agent_analyzewithDupont(self, user_prompt) -> (dict[str, Any] | Any):
+    async def run_graph_agent_finance_analyze(
+            self, 
+            user_prompt,
+            __event_emitter__=None
+        ) -> (dict[str, Any] | Any):
         """
-        Run the full Research -> Analyzer workflow on the user's prompt.
+        Execute the Research -> Analyzer LangGraph workflow on the user's prompt.
 
         This is the main entry point exposed to Open-WebUI. It builds an
         initial :class:`CustomWorkflowState` from the incoming ``user_prompt``
-        and the configured LLM ``self.model_obj``, then invokes
-        :data:`sl_finance_agent.graph_one` to execute the LangGraph workflow:
+        and the configured LLM ``self.model_obj``, then drives
+        :data:`sl_finance_agent.graph_one` via ``astream_events`` (protocol
+        ``v2``) so that intermediate progress can be observed and forwarded
+        back to the host UI through ``__event_emitter__``.
+
+        Once streaming completes, return ``final_state["analysis_result"]``
+           (a markdown-formatted report produced by the Analyzer node) and
+           emit a ``"✅ Analysis completed"`` status event.
 
         Parameters
         ----------
         user_prompt : str
             The natural-language request from the end user describing
             the financial analysis to perform.
+        __event_emitter__ : Awaitable, optional
+            Async callback supplied by Open-WebUI used to push status
+            updates back to the chat UI. When ``None`` — for example when
+            running this tool directly from a plain Python script —
+            status events are skipped but the workflow still runs to
+            completion and its result is still returned.
 
         Returns
         -------
         dict[str, Any] | Any
-            The ``analysis_result`` field of the final graph state,
-            typically a markdown-formatted report produced by the
-            Analyzer node.
+            The value of the ``analysis_result`` field in the final graph
+            state — typically a markdown-formatted report produced by the
+            Analyzer node of the workflow.
+
+        Raises
+        ------
+        RuntimeError
+            If the LangGraph workflow finishes without producing a state
+            payload (i.e. ``final_state`` is still ``None`` after streaming),
+            the user is asked to check the graph configuration and try again.
+        Exception
+            Any exception raised while streaming events is logged, surfaced
+            to the UI as a ``"❌ Graph Workflow execution Failed: ..."``
+            status event, and then re-raised to the caller.
         """
-        self.logger.info("🚀 Starting the **Main Graph** workflow for: '%s'\n\nTo the model: '%s'", user_prompt, self.model_obj)
 
         initial_state: CustomWorkflowState = {
             "user_query": user_prompt,
@@ -67,10 +91,107 @@ class Tools:
             "analysis_result": ""
         }
 
-        # here invoke with the graph_one
-        result = graph_one.invoke(initial_state)
+        self.logger.info("🚀 Starting the **Main Graph** workflow for: '%s'\n\nTo the model: '%s'", user_prompt, self.model_obj)
 
-        return result["analysis_result"]
+        # here invoke with the graph_one
+        # result = graph_one.invoke(initial_state)
+        # return result["analysis_result"]
+
+        if __event_emitter__:
+            await __event_emitter__(
+                {
+                    "type": "status",
+                    "data": {
+                        "description": "🚀 Starting agent graph one financial analysis...",
+                        "done": False,
+                    },
+                }
+            )
+
+        final_state = None
+
+        try:
+            # invoke the agent graph one via astream_events 
+            async for event in graph_one.astream_events(
+                initial_state,
+                version="v2",
+            ):
+
+                event_type = event.get("event", "")
+
+                # event tool start 
+                if event_type == "on_tool_start":
+
+                    tool_name = event.get("name", "unknown_tool")
+
+                    self.logger.info("Tool started: %s",tool_name)
+
+                    if __event_emitter__:
+                        await __event_emitter__(
+                            {
+                                "type": "status",
+                                "data": {
+                                    "description": f"🔧 Running: {tool_name}",
+                                    "done": False,
+                                },
+                            }
+                        )
+
+                # Tool finished
+                elif event_type == "on_tool_end":
+                    tool_name = event.get("name", "unknown_tool")
+                    self.logger.info( "Tool completed: %s", tool_name)
+
+                # Node started
+                elif event_type == "on_chain_start":
+                    node_name = event.get("name", "")
+                    if node_name:
+                        self.logger.info("Node started: %s",node_name)
+
+                # Graph completed
+                elif event_type == "on_chain_end":
+                    # get the agent final result data
+                    data = event.get("data", {})
+                    output = data.get("output")
+                    if isinstance(output, dict):
+                        final_state = output
+
+        except Exception as ex:
+
+            self.logger.exception("Workflow execution failed: %s", str(ex))
+
+            if __event_emitter__:
+                await __event_emitter__(
+                    {
+                        "type": "status",
+                        "data": {
+                            "description": f"❌ Graph Workflow execution Failed: {str(ex)}",
+                            "done": True,
+                        },
+                    }
+                )
+
+            raise
+
+        if final_state is None:
+            raise RuntimeError("❌ Lang Graph one completed without returning a state. Check and try again.")
+
+        final_answer = final_state.get("analysis_result","")
+
+        if __event_emitter__:
+            await __event_emitter__(
+                {
+                    "type": "status",
+                    "data": {
+                        "description": "✅ Analysis completed",
+                        "done": True,
+                    },
+                }
+            )
+
+        return final_answer
+
+
 
 
 if __name__ == "__main__":
@@ -103,6 +224,6 @@ if __name__ == "__main__":
 
     tools = Tools()
 
-    result = tools.run_agent_analyzewithDupont(user_prompt_final)
+    result = tools.run_graph_agent_finance_analyze(user_prompt_final)
 
-    print("Final result: %s", result["analysis_result"])
+    print("Final result: %s", result)
