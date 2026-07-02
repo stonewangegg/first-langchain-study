@@ -23,7 +23,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
 
-from ..common import get_logger
+from ..common_utils import get_logger
 logger = get_logger(__name__)
 
 FILE_DIR = os.environ.get("FILE_DIR", "./tmp")

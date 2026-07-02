@@ -1,4 +1,4 @@
-""" Second Deep agents """
+""" Analyzer Deep agents """
 
 __version__ = "1.0.0"
 

@@ -14,7 +14,7 @@ from urllib.parse import quote
 from typing import Literal, Any
 from pathlib import Path
 
-from ..common import get_logger
+from ..common_utils import get_logger
 # get the logger
 logger = get_logger(__name__)
 

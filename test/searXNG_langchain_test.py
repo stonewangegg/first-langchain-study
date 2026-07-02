@@ -15,7 +15,7 @@ from langchain_community.utilities import DuckDuckGoSearchAPIWrapper
 
 # Configuration: export SEARX_HOST=http://192.168.8.50:8080
 searx_host = os.environ.get("SEARX_HOST", "http://192.168.8.50:8080")
-searcher_searx = SearxSearchWrapper(searx_host=searx_host, categories=["general"])
+
 
 # Langchain SearXNG tool wrapper for search agent
 def tool_searxng(query: str) -> str:
@@ -26,6 +26,9 @@ def tool_searxng(query: str) -> str:
     Args:
         query: The search keywords or question.
     """
+
+    searcher_searx = SearxSearchWrapper(searx_host=searx_host, categories=["general"])
+
     try: 
         print(f"Fire search via SearxSearchWrapper with query: {query}\n\n")
         raw_results = searcher_searx.results(query,
@@ -57,7 +60,7 @@ def tool_searxng(query: str) -> str:
     except Exception as e:
         return f"Error at connecting to SearXNG or query process: {str(e)}"
     
-
+# web research via searXNG in http REST api
 def searxng_search(
     query: str,
     searxng_host: str = "http://192.168.8.50:8080",  
@@ -150,6 +153,8 @@ def tool_duckduckgo_search(query: str) -> str:
 
 if __name__ == "__main__":
 
-    test_url = "贵州茅台2023年年报"
+    # test_url = "贵州茅台2023年年报"
 
-    results = tool_duckduckgo_search(test_url)
+    # results = tool_duckduckgo_search(test_url)
+
+    pass

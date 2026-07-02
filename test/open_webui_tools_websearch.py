@@ -303,9 +303,9 @@ class KeywordRelevanceScorer:
 # OpenWebUI imports for native search
 try:
     from fastapi import Request
-    from open_webui.main import app  # type: ignore
-    from open_webui.models.users import UserModel, Users  # type: ignore
-    from open_webui.routers.retrieval import SearchForm, process_web_search  # type: ignore
+    from open_webui.main import app
+    from open_webui.models.users import UserModel, Users
+    from open_webui.routers.retrieval import SearchForm, process_web_search
 
     NATIVE_SEARCH_AVAILABLE = True
 except ImportError as e:
@@ -515,17 +515,17 @@ class Tools:
             default=4096,
             description="The maximum number of tokens to use for the LLM.",
         )
-        LLM_TOP_P: float = Field(
+        LLM_TOP_P: float | None = Field(
             title="LLM Top P",
             default=None,
             description="The top_p value to use for the LLM.",
         )
-        LLM_FREQUENCY_PENALTY: float = Field(
+        LLM_FREQUENCY_PENALTY: float | None = Field(
             title="LLM Frequency Penalty",
             default=None,
             description="The frequency penalty to use for the LLM.",
         )
-        LLM_PRESENCE_PENALTY: float = Field(
+        LLM_PRESENCE_PENALTY: float | None = Field(
             title="LLM Presence Penalty",
             default=None,
             description="The presence penalty to use for the LLM.",
@@ -564,17 +564,17 @@ class Tools:
     class UserValves(BaseModel):
         """Per-user configurable options for Research Mode and crawling strategies."""
 
-        SEARXNG_MAX_RESULTS: int = Field(
+        SEARXNG_MAX_RESULTS: int | None = Field(
             title="SearXNG Max Results",
             default=None,
             description="The maximum number of results to return from SearXNG.",
         )
-        CRAWL4AI_MAX_URLS: int = Field(
+        CRAWL4AI_MAX_URLS: int | None = Field(
             title="Crawl4AI Maximum URLs to crawl",
             default=None,
             description="The maximum number of URLs to crawl with Crawl4AI.",
         )
-        CRAWL4AI_MAX_IMAGES: int = Field(
+        CRAWL4AI_MAX_IMAGES: int | None = Field(
             title="Max Images",
             default=None,
             description="Maximum number of images to include (overrides admin setting).",
@@ -822,10 +822,10 @@ class Tools:
             # Fallback: estimate ~4 characters per token (conservative estimate)
             return len(text) // 4
         try:
-            encoding = tiktoken.encoding_for_model(model)
+            encoding = tiktoken.encoding_for_model(model) # type: ignore
         except KeyError:
             # Fallback to cl100k_base for unknown models
-            encoding = tiktoken.get_encoding("cl100k_base")
+            encoding = tiktoken.get_encoding("cl100k_base") # type: ignore
         return len(encoding.encode(text))
 
     async def _truncate_content(
@@ -840,9 +840,9 @@ class Tools:
             return content[:max_chars] + "\n\n[Content truncated due to length...]"
 
         try:
-            encoding = tiktoken.encoding_for_model(model)
+            encoding = tiktoken.encoding_for_model(model) # type: ignore
         except KeyError:
-            encoding = tiktoken.get_encoding("cl100k_base")
+            encoding = tiktoken.get_encoding("cl100k_base") # type: ignore
 
         tokens = encoding.encode(content)
         if len(tokens) <= max_tokens:
@@ -854,7 +854,7 @@ class Tools:
         return truncated_text + "\n\n[Content truncated due to length...]"
 
     def _format_output(
-        self, crawl_results: list, query: str, sources: list = None, images: list = None
+        self, crawl_results: list, query: str, sources: list = [], images: list = []
     ) -> str:
         """
         Format crawl results into clean markdown with cited sources.
@@ -1027,12 +1027,12 @@ class Tools:
         """Helper to create a request object for native search."""
         if not NATIVE_SEARCH_AVAILABLE:
             raise ImportError("OpenWebUI native search not available")
-        return Request(scope={"type": "http", "app": app})
+        return Request(scope={"type": "http", "app": app}) # type: ignore
 
     async def _search_native(
         self,
         query: str,
-        __event_emitter__: Callable[[dict], Any] = None,
+        __event_emitter__: Callable[[dict], Any] = None, # type: ignore
         __user__: Optional[dict] = None,
     ) -> List[str]:
         """Search using OpenWebUI's native web search and return URLs."""
@@ -1387,6 +1387,8 @@ class Tools:
                 image_list.extend(research_result["images"])
             if "videos" in research_result:
                 video_list.extend(research_result["videos"])
+
+        # not effective_research_mode
         else:
             # Standard batch crawling
             for i in range(0, len(gathered_urls), self.valves.CRAWL4AI_BATCH):
@@ -1456,7 +1458,7 @@ class Tools:
                                     "\n\n[Content truncated due to length...]", ""
                                 )
                             )
-                        except:
+                        except Exception as e:
                             # If parsing fails, use original but truncated
                             pass
                         page_tokens = self.valves.CRAWL4AI_MAX_TOKENS
@@ -2159,7 +2161,7 @@ Return only the link numbers (e.g., "1, 3, 5"), nothing else."""
 
     async def _crawl_url(
         self,
-        urls: Union[list, str],
+        urls: list[str] | str,
         query: Optional[str] = None,
         extract_links: bool = False,
         __event_emitter__: Callable[[dict], Any] = None,

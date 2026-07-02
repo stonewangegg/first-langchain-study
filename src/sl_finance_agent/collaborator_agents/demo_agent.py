@@ -32,7 +32,7 @@ from ..cninfo_report_downloader import CNInfoReportDownloader
 from ..tools_file_write_read import tool_custom_file_read, tool_custom_file_write, tool_generate_word_doc
 from .agent_system_prompt import OFFICER_SYSTEM_PROMPT, RESEARCHER_SYSTEM_PROMPT, ANALYST_SYSTEM_PROMPT
 
-from ..common import get_logger
+from ..common_utils import get_logger
 # get the logger
 logger = get_logger(__name__)
 

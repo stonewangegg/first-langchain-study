@@ -55,17 +55,7 @@ import json
 from pydantic import SecretStr
 
 from ..cninfo_report_downloader import CNInfoReportDownloader
-from ..common import ModelObj, SUPPORTED_LLM_TYPES, get_logger
-
-MAX_COMPLETION_TOKENS = os.environ.get("MAX_COMPLETION_TOKENS", "16384")
-
-# current working directory
-CURRENT_WORKING_DIR = os.getcwd()
-
-FILE_DIR = os.environ.get("FILE_DIR", "./tmp")
-
-# export FILE_ROOT_DIR="your/file/root/dir"
-FILE_ROOT_DIR = str(Path(CURRENT_WORKING_DIR) / Path(FILE_DIR))
+from ..common_utils import ModelObj, SUPPORTED_LLM_TYPES, get_logger, MAX_COMPLETION_TOKENS, FILE_DIR, FILE_ROOT_DIR
 
 # system prompt for research agent
 RESEARCHER_SYSTEM_PROMPT = """
