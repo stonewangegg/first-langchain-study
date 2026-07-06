@@ -444,8 +444,7 @@ async def research_crawl(
     The tool is async because each underlying crawl strategy in turn calls the
     asynchronous Crawl4AI HTTP endpoint via ``requests`` wrapped in the
     ``asyncio`` event loop. All strategies ultimately return a dict of the same
-    shape produced by ``_crawl_url`` / ``_pseudo_adaptive_crawl`` /
-    ``_llm_guided_crawl``, e.g.::
+    shape, e.g.:
 
         {
             "content":    [{"url": ..., "title": ..., "content": [...], ...}, ...],
@@ -469,18 +468,12 @@ async def research_crawl(
           keyword-scoring fallback when LLM selection is unavailable or
           fails. Better link quality at the cost of additional latency.
 
-    ``BFS_DEEP`` and ``RESEARCH_FILTER`` modes are reserved in
-    ``ResearchCrawlMode`` but not yet implemented; the corresponding branches
-    are commented out in this dispatcher.
-
     Args:
-        urls: Seed URLs to begin crawling from. The strategies cap this to
-            the first ~5 entries to bound work; additional URLs beyond that
-            are ignored.
-        query: Free-form research question / topic. Used both as the keyword
+        urls: A string list of Seed URLs to begin crawling from. 
+        query: A string that Free-form research question / topic. Used both as the keyword
             source for scoring discovered links and as the semantic anchor for
             ``LLM_INSTRUCTION``-style extraction inside each page.
-        mode: Which crawling strategy to use. Should be one of
+        mode: Optional, default is ``PSEUDO_ADAPTIVE``. Which crawling strategy to use. Should be one of
             ``ResearchCrawlMode.PSEUDO_ADAPTIVE`` or
             ``ResearchCrawlMode.LLM_GUIDED``. Any unknown value is logged and
             falls back to ``PSEUDO_ADAPTIVE`` so the agent never gets a hard
@@ -877,7 +870,7 @@ async def _crawl_url(
             uru_logger.get_logger().error(f"Crawl failed with URLs, the response is:\n {str(raw_crawled_data)}")
             return {}
             
-        uru_logger.log_debug(f"Crawled raw crawled data: \n{json.dumps(raw_crawled_data, ensure_ascii=False, indent=2)}." )
+        uru_logger.log_debug(f"Crawled raw crawled data: \n{json.dumps(raw_crawled_data, ensure_ascii=False, indent=2)}.")
 
         # Crawl4AI returns content in the 'results' key as a list
         results = []
@@ -888,12 +881,12 @@ async def _crawl_url(
         all_links = {}  # For research mode link extraction
 
         result_data_list = raw_crawled_data.get("results", [])
-        uru_logger.log_debug(f"Crawled raw result length: {len(result_data_list)}." )
+        uru_logger.get_logger().info(f"Crawled raw result length: {len(result_data_list)}.")
         for data_item in result_data_list:
 
             # check crawed data in this item is success or not
             if data_item.get("success") is not True:
-                uru_logger.log_debug(f"Can not find the success flag, pass: {data_item}")
+                uru_logger.get_logger().warning(f"Can not find the success flag, pass: {data_item}")
                 continue
 
             # url of this one crawled page
@@ -1046,14 +1039,13 @@ if __name__ == "__main__":
 
     crawlSettings = CrawlSettings()
 
-    response = asyncio.run(_crawl_url
-                           (
+    response = asyncio.run(_crawl_url(
                                 urls="http://www.cnautonews.com/chengyongcar/2026/05/11/detail_20260511389571.html", 
                                 crawlSettings=crawlSettings, 
                                 link_query="新能源电动汽车近年行业整体营收、利润数据与增速数据", 
                                 extract_links=True
                             )
-    )
+                        )
 
     if isinstance(response, dict):
         print(f"Crawl results: \n{response}")

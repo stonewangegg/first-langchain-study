@@ -67,7 +67,7 @@ class CustomUruLog():
 
     def log_debug(self, message: str):
         """Log debug message and collect for response when DEBUG is enabled."""
-        self._rurlogger.info(f"[DEBUG] {message}")
+        self._rurlogger.debug(message)
         self._debug_log.append(message)
 
     def clear_debug_log(self):

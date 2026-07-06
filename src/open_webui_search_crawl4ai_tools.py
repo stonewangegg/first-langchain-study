@@ -1,12 +1,14 @@
 """
 """
 
+import asyncio
 from typing import Literal
 from urllib.parse import parse_qs, urlparse
 
+from jinja2 import Template
 from pydantic import BaseModel, Field, model_validator
 
-from sl_finance_agent import common_web_search_crawl, uru_logger
+from sl_finance_agent import common_web_search_crawl, uru_logger, SUPPORTED_LLM_TYPES, model_factory, create_crawler_agent
 
 
 class Tools:
@@ -333,9 +335,56 @@ class Tools:
         uru_logger.get_logger().info("Web Search and Crawl tool initialized")
 
 
+    async def search_crawl(self, user_prompt: str, mode_str: str) -> str:
+        """
+        """
+
+        model_obj = model_factory(mode_str)
+
+        final_content = None
+
+        # Invoke the agent
+        if model_obj:
+            # Invoke the agent
+            final_response = await create_crawler_agent(model_obj).ainvoke(
+                                                                        {
+                                                                            "messages": [
+                                                                                {
+                                                                                    "role": "user",
+                                                                                    "content": user_prompt,
+                                                                                }
+                                                                            ]
+                                                                        }
+                                                                    )
+
+            final_content = final_response["messages"][-1].content
+            # Print the agent's response
+            uru_logger.get_logger().info("\n**Final response**: \n" + final_content)
+
+        return final_content or ""
+
+
 if __name__ == "__main__":
 
+    user_prompt_test = """
+    # 目标上市公司: "{{company_name}}"
+
+    ## 搜索获取目标上市公司所属行业信息与数据, 根据用户要求"{{query_str}}", 并按照SKILL规则进行分析、总结, 生成报告
+    """
+
+    # get the user input parameters value
+    company_name, query_str, model_str = map(str, input(f"Enter your target company name, query string, model[{SUPPORTED_LLM_TYPES}] separated by space: ").split())
+
+    user_prompt_template = Template(user_prompt_test)
+
+    user_prompt_final = user_prompt_template.render(company_name=company_name, query_str=query_str)
+
+    uru_logger.get_logger().info("🚀 Starting the Main Agent workflow for: '%s'...\n", user_prompt_final)
+
+    tools = Tools()
+
+    asyncio.run(tools.search_crawl(user_prompt=user_prompt_final, mode_str=model_str))
 
 
-    pass
+    
         

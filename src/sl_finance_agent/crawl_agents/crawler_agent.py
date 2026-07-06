@@ -82,12 +82,12 @@ class MessageLimitMiddleware(AgentMiddleware):
         messages = state["messages"]
 
         length= len(messages)
-        uru_logger.get_logger().info("[%s] New message is going to send to LLM again! Length = %d \n", self.agent_name, length)
+        uru_logger.get_logger().info(f"{self.agent_name} New message is going to send to LLM again! Length = {length} \n")
 
         for i, msg in enumerate(messages):
-            uru_logger.get_logger().debug("------> Message %d: [%s] Role=%s, Content='%s'\n", i, self.agent_name, msg.type, msg.content)
+            uru_logger.get_logger().debug(f"------> Message {i}: {self.agent_name} Role={msg.type}, Content={msg.content}\n")
         if length >= self.max_messages:
-            uru_logger.get_logger().warning("[%s] Message limit reached: %d", self.agent_name, len(state['messages']))
+            uru_logger.get_logger().warning(f"{self.agent_name} Message limit reached: {len(state['messages'])}", self.agent_name)
             return {
                 "messages": [AIMessage("Conversation limit reached.")],
                 "jump_to": "end"
@@ -98,7 +98,7 @@ class MessageLimitMiddleware(AgentMiddleware):
         last_four_messages = state["messages"][-4:]
         
         for i, msg in enumerate(last_four_messages):
-            uru_logger.get_logger().info("<------ [%s] The Model returned Message (last four) [%d]: Role=%s, Content='%s'\n", self.agent_name, i, msg.type, msg.content)
+            uru_logger.get_logger().info(f"<------ {self.agent_name} The Model returned Message (last four) {i}: Role={msg.type}, Content={msg.content}\n")
 
             if isinstance(msg, AIMessage) and msg.tool_calls:
                 for tool_call in msg.tool_calls:
@@ -117,8 +117,8 @@ class MessageLimitMiddleware(AgentMiddleware):
 # initial the Message Middleware Object for manager agent
 messageLimitMiddleware = MessageLimitMiddleware(max_messages=100, agent_name="Crawler")
 
-# inital the tool call limitation with 30
-toolCallLimitMiddleware = cast(AgentMiddleware, ToolCallLimitMiddleware(tool_name="tool_custom_file_read", run_limit=30, exit_behavior="end"))
+# inital the tool call limitation with 10
+toolCallLimitMiddleware = cast(AgentMiddleware, ToolCallLimitMiddleware(tool_name="tool_tavily_search", run_limit=10, exit_behavior="end"))
 
 # Config the Built-in Virtual Filesystem Backend
 fs_backend = FilesystemBackend(root_dir=FILE_DIR, virtual_mode=True)
