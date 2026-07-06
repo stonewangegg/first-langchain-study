@@ -334,7 +334,6 @@ class Tools:
 
         uru_logger.get_logger().info("Web Search and Crawl tool initialized")
 
-
     async def search_crawl(self, user_prompt: str, mode_str: str) -> str:
         """
         """
@@ -369,15 +368,15 @@ if __name__ == "__main__":
     user_prompt_test = """
     # 目标上市公司: "{{company_name}}"
 
-    ## 搜索获取目标上市公司所属行业信息与数据, 根据用户要求"{{query_str}}", 并按照SKILL规则进行分析、总结, 生成报告
+    ## 搜索获取最近一'{{time_range}}'，网络上发布的目标上市公司所属行业信息与数据, 根据用户要求: '{{query_str}}', 进行分析、总结, 生成报告
     """
 
     # get the user input parameters value
-    company_name, query_str, model_str = map(str, input(f"Enter your target company name, query string, model[{SUPPORTED_LLM_TYPES}] separated by space: ").split())
+    company_name, time_range, query_str, model_str = map(str, input(f"Enter your target company name, time range, and query string, model[{SUPPORTED_LLM_TYPES}] separated by space: ").split())
 
     user_prompt_template = Template(user_prompt_test)
 
-    user_prompt_final = user_prompt_template.render(company_name=company_name, query_str=query_str)
+    user_prompt_final = user_prompt_template.render(company_name=company_name, time_range=time_range, query_str=query_str)
 
     uru_logger.get_logger().info("🚀 Starting the Main Agent workflow for: '%s'...\n", user_prompt_final)
 

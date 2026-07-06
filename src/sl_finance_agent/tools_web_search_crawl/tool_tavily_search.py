@@ -36,7 +36,7 @@ from ..common_utils import get_logger
 logger = get_logger(__name__)
 
 
-def _tool_tavily_func(query: str, max_results:int, include_domains: list|None = None) -> Dict:
+def _tool_tavily_func(query: str, max_results:int, include_domains: list|None = None, time_range: str = "month") -> Dict:
     """
         Example trimmed output::
 
@@ -63,7 +63,7 @@ def _tool_tavily_func(query: str, max_results:int, include_domains: list|None = 
         include_images=False,
         include_image_descriptions=False,
         search_depth="basic",
-        # time_range="month",
+        time_range=time_range,
         # start_date=None,
         # end_date=None,
         include_domains=include_domains,
@@ -79,7 +79,7 @@ def _tool_tavily_func(query: str, max_results:int, include_domains: list|None = 
         return {}
 
 @tool
-def tool_tavily_search(query: str, max_results: int, include_domains: list|None = None) -> str:
+def tool_tavily_search(query: str, max_results: int, time_range: str = "month", include_domains: list|None = None) -> str:
     """Run a web search via the Tavily LangChain wrapper and return the raw response.
 
     Delegates to the internal ``_tool_tavily_func`` helper, which calls
@@ -101,6 +101,7 @@ def tool_tavily_search(query: str, max_results: int, include_domains: list|None 
     Args:
         query: The search keywords or natural-language question to send to Tavily.
         max_results: Maximum number of results to retrieve from Tavily.
+        time_range: The time range back from the current date to filter results.
         include_domains: Optional list of domains to restrict the search to
             (for example ``["reuters.com", "bloomberg.com"]``). ``None`` means
             no domain restriction and Tavily searches the open web.
@@ -118,7 +119,7 @@ def tool_tavily_search(query: str, max_results: int, include_domains: list|None 
           ``{str(e)}`` placeholder is replaced with ``str(exception)``).
     """
     
-    raw_results = _tool_tavily_func(query=query, max_results=max_results, include_domains=include_domains)
+    raw_results = _tool_tavily_func(query=query, time_range=time_range, max_results=max_results, include_domains=include_domains)
     
     # drop no use items
     try:
