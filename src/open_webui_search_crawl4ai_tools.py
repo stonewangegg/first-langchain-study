@@ -368,7 +368,7 @@ if __name__ == "__main__":
     user_prompt_test = """
     # 目标上市公司: "{{company_name}}"
 
-    ## 搜索获取最近一'{{time_range}}'，网络上发布的目标上市公司所属行业信息与数据, 根据用户要求: '{{query_str}}', 进行分析、总结, 生成报告
+    ## 搜索获取最近'{{time_range}}'，网络上发布的目标上市公司所属行业信息与数据, 根据用户要求: '{{query_str}}', 进行分析、总结, 生成报告
     """
 
     # get the user input parameters value
@@ -378,7 +378,7 @@ if __name__ == "__main__":
 
     user_prompt_final = user_prompt_template.render(company_name=company_name, time_range=time_range, query_str=query_str)
 
-    uru_logger.get_logger().info("🚀 Starting the Main Agent workflow for: '%s'...\n", user_prompt_final)
+    uru_logger.get_logger().info(f"🚀 Starting the Main Agent workflow for: '{user_prompt_final}'...\n")
 
     tools = Tools()
 

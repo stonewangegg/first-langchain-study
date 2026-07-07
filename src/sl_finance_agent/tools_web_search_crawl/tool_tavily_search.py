@@ -101,10 +101,10 @@ def tool_tavily_search(query: str, max_results: int, time_range: str = "month", 
     Args:
         query: The search keywords or natural-language question to send to Tavily.
         max_results: Maximum number of results to retrieve from Tavily.
-        time_range: The time range back from the current date to filter results.
-        include_domains: Optional list of domains to restrict the search to
-            (for example ``["reuters.com", "bloomberg.com"]``). ``None`` means
-            no domain restriction and Tavily searches the open web.
+        time_range: The time range back from the current date to filter results, it must be one of ``["day", "week", "month", "year"]``.
+        include_domains: Optional list of domains to make the search must have these 
+                urls (for example ``["reuters.com", "bloomberg.com", "www.eastmoney.com", "finance.sina.com.cn"]``). ``None`` means
+                no domain restriction and Tavily searches the open web.
 
     Returns:
         One of the following strings:
@@ -118,6 +118,12 @@ def tool_tavily_search(query: str, max_results: int, time_range: str = "month", 
           is raised while calling Tavily or processing the response (the
           ``{str(e)}`` placeholder is replaced with ``str(exception)``).
     """
+
+    if include_domains is not None:
+        if not isinstance(include_domains, list):
+            raise TypeError("include_domains must be a list of strings")
+        if not all(isinstance(d, str) for d in include_domains):
+            raise TypeError("item of include_domains must contain only strings")
     
     raw_results = _tool_tavily_func(query=query, time_range=time_range, max_results=max_results, include_domains=include_domains)
     
@@ -158,7 +164,7 @@ def tool_tavily_search(query: str, max_results: int, time_range: str = "month", 
             logger.warning("No results found.")
             return "No result found by this search."
     except Exception as e:
-        logger.error("Exception at connecting to Tavily or query processing: %s", e)
+        logger.error("Tavily search Exception at connecting or query processing: %s", e)
         return f"Error occurred during this search. {str(e)}"
     
 
