@@ -17,7 +17,7 @@ class Common_web_search_crawl:
         self._total_urls: int = 0
         pass
 
-    def set_total_urls(self, urls:int):
-        self._total_urls = urls
+    def set_total_urls(self, urls_count:int):
+        self._total_urls = urls_count
 
 common_web_search_crawl = Common_web_search_crawl()

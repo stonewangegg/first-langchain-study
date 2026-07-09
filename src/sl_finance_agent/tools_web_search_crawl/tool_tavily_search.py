@@ -87,17 +87,6 @@ def tool_tavily_search(query: str, max_results: int, time_range: str = "month", 
     ``include_answer=True``. No time-range filter is applied, so Tavily 
     searches the open web without date restrictions.
 
-    From the response returned by ``_tool_tavily_func``, this tool keeps two
-    top-level fields and pretty-prints them as JSON 
-
-        * ``query``  -- the original query echoed back by Tavily.
-        * ``results`` -- the list of result items **as returned by Tavily**
-          (i.e. all original fields, e.g. ``title``, ``url``, ``content``,
-          ``score``, ``raw_content``). The per-result ``score >= 4.0`` filter
-          in the source builds a local ``shrink_results`` list that is
-          currently never assigned, so the full unfiltered ``results`` list
-          is what ends up in the output.
-
     Args:
         query: The search keywords or natural-language question to send to Tavily.
         max_results: Maximum number of results to retrieve from Tavily.
@@ -112,6 +101,9 @@ def tool_tavily_search(query: str, max_results: int, time_range: str = "month", 
         * ``"Get search results: {json_string}"`` on success, where
           ``json_string`` is a pretty-printed JSON object containing the
           ``query`` and ``results`` fields described above.
+            * ``query``  -- the original query echoed back by Tavily.
+            * ``results`` -- the list of result items **as returned by Tavily**
+            (e.g. "title", "url", "content", score). 
         * ``"No result found by this search."`` if the raw response is empty
           (or the ``results`` list is empty / has no ``query`` to echo).
         * ``"Error occurred during this search. {str(e)}"`` if any exception
@@ -139,13 +131,13 @@ def tool_tavily_search(query: str, max_results: int, time_range: str = "month", 
                 results = raw_results["results"]
                 shrink_results = []
                 for result in results:
-                    if result["score"] >= 4.0: # will make this configure
+                    if result["score"] >= 0.45: # will make this configure
                         shrink = {}
                         shrink["url"] = result["url"]
                         shrink["content"] = result["content"]
                         shrink["score"] = result["score"]
                         shrink_results.append(shrink)
-                shrink_raw_results["results"] = raw_results["results"]
+                shrink_raw_results["results"] = shrink_results
 
             # shrink content of each result in results
             # for item in trim_raw_results["results"]:
@@ -158,8 +150,9 @@ def tool_tavily_search(query: str, max_results: int, time_range: str = "month", 
             # - indent=2: Makes it pretty-printed (optional, helps debugging)
             json_string = json.dumps(shrink_raw_results, ensure_ascii=False, indent=2)
 
-            logger.info("Json Result of tavily searching: %s\n", json_string)
-            return f"Get search results: {json_string}"
+            logger.debug("Json Result of tavily searching: %s\n", json_string)
+            logger.info(f"Shrink Result length[{len(shrink_raw_results["results"])}] of tavily searching with query: '{query}' ")
+            return f"Search results: {json_string}"
         else:
             logger.warning("No results found.")
             return "No result found by this search."

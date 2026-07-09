@@ -11,6 +11,7 @@ import re
 import traceback
 from typing import Any, List, Literal, Optional
 from pydantic import BaseModel, Field, model_validator
+from collections import deque
 from langchain.tools import tool
 import requests
 from urllib.parse import parse_qs, urlparse, quote
@@ -426,13 +427,13 @@ class ArticleData(BaseModel):
     summary: str
 
 @tool
-async def research_crawl(
-        urls: List[str],
+async def tool_research_crawl(
+        urls: List[tuple[str, int]],
         query: str,
         mode: str = "pseudo_adaptive"
     ) -> dict | None:
 
-    """Crawl a list of URLs in research mode and return content relevant to ``query``.
+    """Crawl a list of URLs(tuple like (url, score)) in research mode and return content relevant to ``query``.
 
     This is the public LangChain ``@tool`` entry point that an agent calls when
     it wants to perform a multi-page research crawl (as opposed to a single
@@ -469,7 +470,7 @@ async def research_crawl(
           fails. Better link quality at the cost of additional latency.
 
     Args:
-        urls: A string list of Seed URLs to begin crawling from. 
+        urls: A tuple list of Seed URLs for example: ("url", score) to begin crawling from. 
         query: A string that Free-form research question / topic. Used both as the keyword
             source for scoring discovered links and as the semantic anchor for
             ``LLM_INSTRUCTION``-style extraction inside each page.
@@ -503,9 +504,9 @@ async def research_crawl(
         return await _pseudo_adaptive_crawl(urls, query)
     
 async def _pseudo_adaptive_crawl(
-        start_urls: List[str],
+        target_urls: List[tuple[str, int]],
         query: str,
-        max_pages: int=15,
+        max_pages: int=30,
         max_depth: int=2,
         batch_size: int=5,
         include_external: bool=False
@@ -516,11 +517,8 @@ async def _pseudo_adaptive_crawl(
     2. Keyword-based filtering of discovered links
     3. Iterative crawling with priority scoring
     """
-    from collections import deque
 
     crawlSettings = CrawlSettings()
-
-    keywords = query.lower().split()
 
     # Track crawled pages and discovered links
     crawled_pages = set()
@@ -531,13 +529,16 @@ async def _pseudo_adaptive_crawl(
     # Queue of (url, depth, initial_score)
     queue = deque()
 
-    # this is the key point of target urls prepare to crawl
-    # Add initial URLs with base score
-    for url in start_urls[:5]:  # Limit starting URLs
-        if url not in crawled_pages:
+    keywords = query.lower().split()
+    
+    # construct the queue for following crawl
+    for url_tuple in target_urls:
+        if url_tuple[0] not in crawled_pages:
             # score = sum(1 for kw in keywords if kw in url.lower())
-            score = sum(1 for kw in keywords if re.search(rf'\b{re.escape(kw)}\b', url.lower()))
-            queue.append((url, 0, score))
+            # score = sum(1 for kw in keywords if re.search(rf'\b{re.escape(kw)}\b', url.lower()))
+
+            # (url, depth, initial_score), depth initial with 0
+            queue.append((url_tuple[0], 0, url_tuple[1]))
 
     # set the total urls to singleton
     common_web_search_crawl.set_total_urls(max_pages)
@@ -546,29 +547,27 @@ async def _pseudo_adaptive_crawl(
     while queue and len(crawled_pages) < max_pages:
         
         # Get batch of URLs to process
-        batch = []
-        for _ in range(min(batch_size, len(queue))):
+        one_time_batch = []
+        for q in range(min(batch_size, len(queue))):
             if queue:
-                batch.append(queue.popleft())
+                one_time_batch.append(queue.popleft())
 
         # Sort batch by score (highest first)
-        batch.sort(key=lambda x: x[2], reverse=True)
+        one_time_batch.sort(key=lambda x: x[2], reverse=True)
 
-        for url, depth, score in batch:
-            if len(crawled_pages) >= max_pages or depth > max_depth:
+        for url, depth, score in one_time_batch:
+            if len(crawled_pages) >= max_pages or url in crawled_pages or depth > max_depth:
                 continue
 
-            if url in crawled_pages:
-                continue
-
+            # add the crawled record
             crawled_pages.add(url)
 
-            # Crawl the page content with link extraction
+            # Indeed it will just crawl one url of this batch one time
             result = await _crawl_url(
                 urls=[url],
                 crawlSettings=crawlSettings,
                 link_query=query,
-                extract_links=True
+                extract_links=True          # Crawl the page content with link extraction
             )
 
             # check the crawled result form _crawl_url
@@ -585,28 +584,25 @@ async def _pseudo_adaptive_crawl(
             if depth < max_depth:
                 # going down deep
                 discovered_links = result.get("links", [])
-
-                for link in discovered_links:
-                    if link in crawled_pages:
-                        continue
-
-                    parsed_link = urlparse(link)
-                    parsed_url = urlparse(url)
-
-                    # Check domain restrictions
-                    if not include_external:
-                        if (
-                            parsed_link.netloc
-                            and parsed_link.netloc != parsed_url.netloc
-                        ):
+                if discovered_links:
+                    for link in discovered_links:
+                        if link in crawled_pages:
                             continue
 
-                    # Score the link
-                    link_lower = link.lower()
-                    link_score = sum(1 for kw in keywords if re.search(rf'\b{re.escape(kw)}\b', link_lower))
+                        parsed_link = urlparse(link)
+                        parsed_url = urlparse(url)
 
-                    if link_score > 0:  # Only follow relevant links
-                        queue.append((link, depth + 1, link_score))
+                        # Check domain restrictions if include_external == false
+                        if not include_external:
+                            if (parsed_link.netloc and parsed_link.netloc != parsed_url.netloc):
+                                continue
+
+                        # Score the link
+                        link_lower = link.lower()
+                        link_score = sum(1 for kw in keywords if re.search(rf'\b{re.escape(kw)}\b', link_lower))
+
+                        if link_score > 0:  # Only follow relevant links, loop
+                            queue.append((link, depth + 1, link_score))
 
     uru_logger.get_logger().info(f"[Pseudo-Adaptive] Crawled {len(crawled_pages)} pages")
 
@@ -619,7 +615,7 @@ async def _pseudo_adaptive_crawl(
 
 # LLM Guider Crawl
 async def _llm_guided_crawl(
-        start_urls: List[str],
+        start_urls: List[tuple[str, int]],
         query: str
     ) -> dict:
     """
@@ -642,7 +638,8 @@ async def _llm_guided_crawl(
     urls_to_process = list(start_urls[:5])
 
     while urls_to_process and len(crawled_pages) < max_pages:
-        current_url = urls_to_process.pop(0)
+        current_url_tuple = urls_to_process.pop(0)
+        current_url = current_url_tuple[0]
 
         if current_url in crawled_pages:
             continue
@@ -829,7 +826,7 @@ async def _crawl_url(
         max_links=10,                    # Limit to 10 links for demo
         concurrency=5,                   # Process 5 links simultaneously
         timeout=10,                      # 10 second timeout per link
-        link_query=link_query,                     # Link contextual query to crawl4ai
+        link_query=link_query,           # Link contextual query send to crawl4ai
         score_threshold=0.3,             # Only include links scoring above 0.3
         verbose=True                     # Show detailed progress
     )
@@ -1040,9 +1037,16 @@ if __name__ == "__main__":
     crawlSettings = CrawlSettings()
 
     response = asyncio.run(_crawl_url(
-                                urls="http://www.cnautonews.com/chengyongcar/2026/05/11/detail_20260511389571.html", 
+                                urls=["https://caifuhao.eastmoney.com/news/20260629232057596836470", 
+                                      "https://caifuhao.eastmoney.com/news/20260629172721313236970", 
+                                      "https://caifuhao.eastmoney.com/news/20260615165433551939850",
+                                      "https://finance.sina.com.cn/money/fund/jjgsgd/2026-07-06/doc-inifwscq1814229.shtml",
+                                      "https://caifuhao.eastmoney.com/news/20260629152845905617990",
+                                      "https://caifuhao.eastmoney.com/news/20260630112451595466680",
+                                      "https://caifuhao.eastmoney.com/news/20260629175350629089610",
+                                      "https://stock.eastmoney.com/a/202606233779579657.html"], 
                                 crawlSettings=crawlSettings, 
-                                link_query="新能源电动汽车近年行业整体营收、利润数据与增速数据", 
+                                link_query="恒瑞医药 创新药 行业分析 2025 2026 细分行业数据", 
                                 extract_links=True
                             )
                         )

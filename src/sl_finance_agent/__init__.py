@@ -11,7 +11,7 @@ from .crawl_agents import create_crawler_agent
 from .cninfo_report_downloader import CNInfoReportDownloader
 from .tools_file_write_read import tool_custom_file_read, tool_custom_file_write, tool_generate_word_doc
 from .tools_web_search_crawl import tool_tavily_search, tool_searxng_search, tool_duckduckgo_search
-from .tools_web_search_crawl import tool_searxng_search_urls, common_web_search_crawl, research_crawl
+from .tools_web_search_crawl import tool_searxng_search_urls, common_web_search_crawl, tool_research_crawl
 from .collaborator_agents import agent_collaborator
 from .agent_graph import CustomWorkflowState, graph_one
 from .common_utils import get_logger, uru_logger, get_current_time
@@ -29,7 +29,7 @@ __all__ = [
     "tool_searxng_search",
     "tool_searxng_search_urls",
     "tool_duckduckgo_search",
-    "research_crawl",
+    "tool_research_crawl",
     "common_web_search_crawl", 
     "agent_collaborator",
     "CustomWorkflowState",
