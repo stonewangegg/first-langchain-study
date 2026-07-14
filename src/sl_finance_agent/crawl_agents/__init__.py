@@ -2,6 +2,6 @@
 
 __version__ = "1.0.0"
 
-from .crawler_agent import create_crawler_agent
+from .crawler_agent import CrawlAgents
 
-__all__ = ["create_crawler_agent"]
+__all__ = ["CrawlAgents"]

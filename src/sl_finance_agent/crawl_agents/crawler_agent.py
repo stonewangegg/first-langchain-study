@@ -36,28 +36,26 @@ Notes
   runaway tool usage.
 """
 
-import os
 from typing import Any, cast
 
 from deepagents import create_deep_agent
-from deepagents.backends import FilesystemBackend
 from langchain.agents.middleware import AgentMiddleware, AgentState, Runtime, ToolCallLimitMiddleware, hook_config
 from langchain.messages import AIMessage
 
-from ..common_utils import ModelObj, resolve_llm, FILE_DIR, uru_logger, get_current_time
+from ..common_utils import ModelObj, resolve_llm, uru_logger, get_current_time, FS_BACKEND
 from ..tools_web_search_crawl import tool_tavily_search, tool_research_crawl
 
 
-# system prompt for research agent
-CRAWLER_SYSTEM_PROMPT = """
+# system prompt for crawl agent
+INDUSTRY_CRAWLER_SYSTEM_PROMPT = """
 # You are an expert Web Crawler, tasked with crawling to provide accurate, up-to-date web page content for user query. 
 
 ## Your goal is searching and crawling target informaton and data of the query, then check, organize and summarize all content, 
 # finally write int a file named with keyword of query and date suffix in markdown format.
 
 ## Core steps
-1. Firstly: Review the 'senior-financial-web-crawler' SKILL.md, and make a todo plan comply the content of the skill. 
-2. Secondly: Use `get_current_time` to make sure all web search and data crawl in time, use `tool_tavily_func` to search target page urls with the query in user prompt, 
+1. Firstly: Use `get_current_time` to get the time, and make a todo plan for the user query and comply the skill. 
+2. Secondly: You must make sure all web search and data crawl in time, use `tool_tavily_func` to search target page urls with the query in user prompt, 
 stop when urls number is enough for query or reach 15.
 3. Thirdly: Use `research_crawl` to crawl all searched target urls, with the query in user prompt as one parameter, 
 use `tool_custom_file_write` write all return content to the file in markdown format, with name is constructed as keywords as prefixes and timestamps as suffixes 
@@ -122,54 +120,48 @@ class MessageLimitMiddleware(AgentMiddleware):
         
         return None
 
-# initial the Message Middleware Object for manager agent
-messageLimitMiddleware = MessageLimitMiddleware(max_messages=100, agent_name="Crawler")
-
-# inital the tool call limitation with 10
-toolCallLimitMiddleware = cast(AgentMiddleware, ToolCallLimitMiddleware(tool_name="tool_tavily_search", run_limit=10, exit_behavior="end"))
-
-# Config the Built-in Virtual Filesystem Backend
-fs_backend = FilesystemBackend(root_dir=FILE_DIR, virtual_mode=True)
-
-# Mount/copy skills into virtual filesystem
-# 1. Get the absolute path of the directory where THIS tool script is located
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-# 2. Build the target path relative to THIS directory
-skill_target_path = os.path.join(CURRENT_DIR, "../skills/senior-financial-web-crawler/SKILL.md")
-# 3. (Optional but recommended) Normalize the path to remove the "../"
-skill_target_path = os.path.normpath(skill_target_path)
-with open(skill_target_path, "r", encoding="utf-8") as f:
-    skill_content = f.read()
-
-fs_backend.write(
-    "/skills/senior-financial-web-crawler/SKILL.md",
-    skill_content
-)
-
-def create_crawler_agent(model_obj: ModelObj):
+class CrawlAgents:
     """
-    Build and return the Crawler deep agent.
-
-    Resolves the LLM from ``model_obj``, then assembles a deep agent named
-    "Crawler" that searches the web via Tavily, crawls target pages, and
-    writes markdown reports using the senior-financial-web-crawler skill.
-    Uses a virtual filesystem backend and applies message/tool-call limits.
-
-    Args:
-        model_obj: Model specification used to resolve the underlying LLM.
-
-    Returns:
-        A configured ``create_deep_agent`` instance ready to be invoked.
     """
-    model = resolve_llm(model_obj)
-    uru_logger.get_logger().info("Creating Crawler deep agent with llm_type=%s", model_obj)
+    def __init__(self, agent_name: str) -> None:
 
-    return create_deep_agent(
-        name="Crawler",
-        model=model,
-        skills=["/skills/"],
-        backend=fs_backend,
-        tools=[get_current_time, tool_tavily_search, tool_research_crawl],
-        system_prompt=CRAWLER_SYSTEM_PROMPT,
-        middleware=[messageLimitMiddleware, toolCallLimitMiddleware],
-    )
+        self.agent_name = agent_name
+
+        # initial the Message Middleware Object for manager agent
+        self.messageLimitMiddleware = MessageLimitMiddleware(max_messages=100, agent_name=self.agent_name)
+
+        # inital the tool call limitation with 10
+        self.toolCallLimitMiddleware = cast(AgentMiddleware, ToolCallLimitMiddleware(tool_name="tool_tavily_search", run_limit=10, exit_behavior="end"))
+
+        pass
+
+    def create_crawler_agent(self, model_obj: ModelObj):
+        """
+        Build and return the Crawler deep agent.
+
+        Resolves the LLM from ``model_obj``, then assembles a deep agent named
+        "Crawler" that searches the web via Tavily, crawls target pages, and
+        writes markdown reports using the senior-financial-web-crawler skill.
+        Uses a virtual filesystem backend and applies message/tool-call limits.
+
+        Args:
+            model_obj: Model specification used to resolve the underlying LLM.
+
+        Returns:
+            A configured ``create_deep_agent`` instance ready to be invoked.
+        """
+        model = resolve_llm(model_obj)
+        uru_logger.get_logger().info("Creating Crawler deep agent with llm_type=%s", model_obj)
+
+        return create_deep_agent(
+            name=self.agent_name,
+            model=model,
+            skills=["/skills/"],
+            backend=FS_BACKEND,
+            tools=[get_current_time, tool_tavily_search, tool_research_crawl],
+            system_prompt=INDUSTRY_CRAWLER_SYSTEM_PROMPT,
+            middleware=[self.messageLimitMiddleware, self.toolCallLimitMiddleware],
+        )
+
+
+

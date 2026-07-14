@@ -7,6 +7,7 @@ from .model_obj import ModelObj, SUPPORTED_LLM_TYPES, model_factory, LOCAL_MODEL
 from .model_obj import CURRENT_WORKING_DIR, FILE_DIR, FILE_ROOT_DIR, resolve_llm
 from .tools_utils import get_current_time
 from .logger_utils import get_logger, uru_logger
+from .agent_utils import FS_BACKEND
 
 __all__ = ["ModelObj", 
            "SUPPORTED_LLM_TYPES", 
@@ -23,4 +24,5 @@ __all__ = ["ModelObj",
            "CURRENT_WORKING_DIR",
            "FILE_DIR",
            "FILE_ROOT_DIR",
-           "resolve_llm"]
+           "resolve_llm",
+           "FS_BACKEND"]

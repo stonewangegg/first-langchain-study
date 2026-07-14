@@ -37,18 +37,16 @@ Notes
   exist for the module to import successfully.
 """
 
-import os
 from typing import Any, cast
 
 from deepagents import create_deep_agent
-from deepagents.backends import FilesystemBackend
 from langchain.agents.middleware import AgentMiddleware, AgentState, Runtime, ToolCallLimitMiddleware, hook_config
 from langchain.messages import AIMessage
 from langchain_core.caches import InMemoryCache
 from langchain_core.globals import set_llm_cache
 
 from ..tools_file_write_read import tool_custom_file_read
-from ..common_utils import ModelObj, get_logger, FILE_DIR, get_current_time, resolve_llm
+from ..common_utils import ModelObj, get_logger, FS_BACKEND, get_current_time, resolve_llm
 
 ANALYST_SYSTEM_PROMPT = """
 # You are a senior financial analyst of a listed company.
@@ -124,24 +122,6 @@ toolCallLimitMiddleware = cast(AgentMiddleware, ToolCallLimitMiddleware(tool_nam
 # initial the cache backend for below cache=True
 set_llm_cache(InMemoryCache())
 
-# Config the Built-in Virtual Filesystem Backend
-fs_backend = FilesystemBackend(root_dir=FILE_DIR, virtual_mode=True)
-
-# Mount/copy skills into virtual filesystem
-# 1. Get the absolute path of the directory where THIS tool script is located
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-# 2. Build the target path relative to THIS directory
-skill_target_path = os.path.join(CURRENT_DIR, "../skills/senior-financial-dupont-analyst/SKILL.md")
-# 3. (Optional but recommended) Normalize the path to remove the "../"
-skill_target_path = os.path.normpath(skill_target_path)
-with open(skill_target_path, "r", encoding="utf-8") as f:
-    skill_content = f.read()
-
-fs_backend.write(
-    "/skills/senior-financial-dupont-analyst/SKILL.md",
-    skill_content
-)
-
 def create_analyzer_agent(model_obj: ModelObj):
     """Create the senior financial analyst deep agent.
 
@@ -197,7 +177,7 @@ def create_analyzer_agent(model_obj: ModelObj):
         name="Analyzer",
         model=model,
         skills=["/skills/"],
-        backend=fs_backend,
+        backend=FS_BACKEND,
         tools=[get_current_time, tool_custom_file_read],
         system_prompt=ANALYST_SYSTEM_PROMPT,
         middleware=[messageLimitMiddleware, toolCallLimitMiddleware],

@@ -7,7 +7,7 @@ __version__ = "1.0.0"
 from .research_agents import create_researcher_agent
 from .common_utils import SUPPORTED_LLM_TYPES, ModelObj, model_factory
 from .analyze_agents import create_analyzer_agent
-from .crawl_agents import create_crawler_agent
+from .crawl_agents import CrawlAgents
 from .cninfo_report_downloader import CNInfoReportDownloader
 from .tools_file_write_read import tool_custom_file_read, tool_custom_file_write, tool_generate_word_doc
 from .tools_web_search_crawl import tool_tavily_search, tool_searxng_search, tool_duckduckgo_search
@@ -20,7 +20,7 @@ __all__ = [
     "create_researcher_agent", 
     "SUPPORTED_LLM_TYPES", 
     "create_analyzer_agent",
-    "create_crawler_agent", 
+    "CrawlAgents", 
     "CNInfoReportDownloader", 
     "tool_custom_file_read", 
     "tool_custom_file_write", 

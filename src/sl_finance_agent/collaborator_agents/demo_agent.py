@@ -13,14 +13,12 @@ from typing import Literal, Any, cast
 from datetime import datetime
 
 from deepagents import create_deep_agent, SubAgent
-from deepagents.backends import FilesystemBackend
 from langchain.agents.middleware import AgentMiddleware, AgentState, hook_config
 from langchain.messages import AIMessage
 from langgraph.runtime import Runtime
 from langchain_openai import ChatOpenAI
 from langchain_ollama import ChatOllama
 from langchain.tools import tool
-from langchain_community.agent_toolkits import FileManagementToolkit
 from langchain_community.tools.file_management.list_dir import ListDirectoryTool
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain.agents.middleware import (
@@ -32,7 +30,7 @@ from ..cninfo_report_downloader import CNInfoReportDownloader
 from ..tools_file_write_read import tool_custom_file_read, tool_custom_file_write, tool_generate_word_doc
 from .agent_system_prompt import OFFICER_SYSTEM_PROMPT, RESEARCHER_SYSTEM_PROMPT, ANALYST_SYSTEM_PROMPT
 
-from ..common_utils import get_logger
+from ..common_utils import get_logger, FS_BACKEND
 # get the logger
 logger = get_logger(__name__)
 
@@ -214,10 +212,6 @@ toolCallLimitMiddleware = cast(
     toolCallLimitMiddleware_raw
 )
 
-# Configure the Built-in Filesystem Backend
-logger.info("current file directory for initial FilesystemBackend: %s", FILE_ROOT_DIR)
-fs_backend = FilesystemBackend(root_dir=FILE_ROOT_DIR, virtual_mode=True)
-
 # skills path: the parent directory of skills folder
 SKILL_PATH = str(Path(CURRENT_WORKING_DIR) / "skills")
 logger.info("skills_path: %s", SKILL_PATH)
@@ -270,7 +264,7 @@ checkpointer_searcher = InMemorySaver()
 agent_collaborator = create_deep_agent(
     name="collaborator",
     model=model_vllm,
-    backend=fs_backend,
+    backend=FS_BACKEND,
     tools=[get_current_time, get_current_working_path, create_directory, ListDirectoryTool()],
     system_prompt=OFFICER_SYSTEM_PROMPT,
     subagents=[agent_searcher, agent_analyst],

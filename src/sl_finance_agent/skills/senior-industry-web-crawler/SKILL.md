@@ -1,5 +1,5 @@
 ---
-name: "senior-financial-web-crawler"
+name: "senior-industry-web-crawler"
 description: "根据用户需求，搜索获取上市公司所在行业数据与信息，进行专业分析总结，生成分析报告"
 ---
 

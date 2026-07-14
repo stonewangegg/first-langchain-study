@@ -40,7 +40,6 @@ from pathlib import Path
 from typing import Any, Literal, cast
 
 from deepagents import create_deep_agent
-from deepagents.backends import FilesystemBackend
 from langchain.agents.middleware import AgentMiddleware, AgentState, ToolCallLimitMiddleware, hook_config
 from langchain.messages import AIMessage
 from langchain_openai import ChatOpenAI
@@ -55,7 +54,7 @@ import json
 from pydantic import SecretStr
 
 from ..cninfo_report_downloader import CNInfoReportDownloader
-from ..common_utils import ModelObj, SUPPORTED_LLM_TYPES, get_logger, MAX_COMPLETION_TOKENS, FILE_DIR, FILE_ROOT_DIR
+from ..common_utils import ModelObj, SUPPORTED_LLM_TYPES, get_logger, MAX_COMPLETION_TOKENS, FS_BACKEND, FILE_ROOT_DIR
 
 # system prompt for research agent
 RESEARCHER_SYSTEM_PROMPT = """
@@ -159,7 +158,7 @@ def save_json_file(
         indent=2,
     )
 
-    result = fs_backend.write(
+    result = FS_BACKEND.write(
         file_path=file_path,
         content=content,
     )
@@ -213,9 +212,6 @@ messageLimitMiddleware = MessageLimitMiddleware(max_messages=60, agent_name="Res
 
 # initial the cache backend for below cache=True
 set_llm_cache(InMemoryCache())
-
-# Configure the Built-in Filesystem Backend
-fs_backend = FilesystemBackend(root_dir=FILE_DIR, virtual_mode=True)
 
 # Supported LLM type identifiers for ``create_researcher_agent``.
 def _resolve_llm(model_obj: ModelObj):
@@ -343,7 +339,7 @@ def create_researcher_agent(model_obj: ModelObj):
     return create_deep_agent(
         name="Researcher",
         model=model,
-        backend=fs_backend,
+        backend=FS_BACKEND,
         tools=[get_current_time, tool_cninfo_report_downloader, save_json_file],
         system_prompt=RESEARCHER_SYSTEM_PROMPT,
         middleware=[messageLimitMiddleware, toolCallLimitMiddleware]

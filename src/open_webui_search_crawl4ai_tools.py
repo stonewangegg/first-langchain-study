@@ -8,7 +8,7 @@ from urllib.parse import parse_qs, urlparse
 from jinja2 import Template
 from pydantic import BaseModel, Field, model_validator
 
-from sl_finance_agent import common_web_search_crawl, uru_logger, SUPPORTED_LLM_TYPES, model_factory, create_crawler_agent
+from sl_finance_agent import common_web_search_crawl, uru_logger, SUPPORTED_LLM_TYPES, model_factory, CrawlAgents
 
 
 class Tools:
@@ -338,6 +338,8 @@ class Tools:
         """
         """
 
+        crawlAgents = CrawlAgents("ComapnyCrawler")
+
         model_obj = model_factory(mode_str)
 
         final_content = None
@@ -345,7 +347,7 @@ class Tools:
         # Invoke the agent
         if model_obj:
             # Invoke the agent
-            final_response = await create_crawler_agent(model_obj).ainvoke(
+            final_response = await crawlAgents.create_crawler_agent(model_obj).ainvoke(
                                                                         {
                                                                             "messages": [
                                                                                 {
@@ -368,15 +370,15 @@ if __name__ == "__main__":
     user_prompt_test = """
     # 目标上市公司: "{{company_name}}"
 
-    ## 搜索获取最近'{{time_range}}'，网络上发布的目标上市公司所属行业信息与数据, 根据用户要求: '{{query_str}}', 进行分析、总结, 生成报告
+    ## 搜索获取最近'{{time_range}}'，网络上发布的目标上市公司所属信息与数据, 根据用户要求: '{{query_str}}',与SKILL: `{{skill_name}}` 进行分析、总结, 并生成报告。
     """
 
     # get the user input parameters value
-    company_name, time_range, query_str, model_str = map(str, input(f"Enter your target company name, time range, and query string, model[{SUPPORTED_LLM_TYPES}] separated by space: ").split())
+    company_name, time_range, query_str, skill_name, model_str = map(str, input(f"Enter your target company name, time range, query string, and skill name, model[{SUPPORTED_LLM_TYPES}] separated by space: ").split())
 
     user_prompt_template = Template(user_prompt_test)
 
-    user_prompt_final = user_prompt_template.render(company_name=company_name, time_range=time_range, query_str=query_str)
+    user_prompt_final = user_prompt_template.render(company_name=company_name, time_range=time_range, query_str=query_str, skill_name=skill_name)
 
     uru_logger.get_logger().info(f"🚀 Starting the Main Agent workflow for: '{user_prompt_final}'...\n")
 
