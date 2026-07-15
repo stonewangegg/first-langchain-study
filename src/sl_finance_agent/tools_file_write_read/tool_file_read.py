@@ -1,20 +1,13 @@
-"""LangChain tools for reading files and retrieving content from large PDFs.
+"""LangChain tools for reading files and querying large PDFs via a FAISS index.
 
-Exposes three ``@tool``-decorated functions:
+Tools:
+    * :func:`tool_custom_file_read` -- load a file (txt/md/docx/pdf/xls/csv) and return its text.
+    * :func:`tool_lightRAG_large_file_read` -- chunk a large PDF and persist a FAISS index to ``./faiss_index``.
+    * :func:`tool_lightRAG_search_docs` -- query that index and return the top-5 matching snippets.
 
-* :func:`tool_custom_file_read` -- reads a file from disk and returns its extracted text,
-  selecting the loader by extension (``TextLoader`` / ``Docx2txtLoader`` / ``PDFPlumberLoader`` /
-  ``UnstructuredExcelLoader`` / ``CSVLoader``).
-* :func:`tool_lightRAG_large_file_read` -- chunks a large PDF page-by-page and persists the
-  embeddings as a FAISS index at ``./faiss_index`` for later retrieval.
-* :func:`tool_lightRAG_search_docs` -- queries that FAISS index with a natural-language
-  question and returns the top-5 matching snippets.
-
-A module-level logger (``logging.getLogger(__name__)``) is used to report successful reads
-and any errors encountered while loading, parsing, or retrieving content.
+A module-level logger reports successful reads and any load/parse/retrieval errors.
 """
 
-import os
 from pathlib import Path
 
 from langchain.tools import tool
@@ -29,9 +22,20 @@ logger = get_logger(__name__)
 @tool
 def tool_custom_file_read (file_path:str) -> str:
     """
-    Reads the target file and returns the extracted content.
-    Args: file_path (str): The path of the file need to be read. e.g. /path/to/your/document.pdf
-    Returns: The extracted txt content from the file
+    Read a file and return its extracted text.
+
+    The loader is selected by extension: ``TextLoader`` (txt/md/json/yaml/xml/html/js/log/yml/cfg/ini),
+    ``Docx2txtLoader`` (docx), ``PDFPlumberLoader`` (pdf, lazy-loaded page-by-page),
+    ``UnstructuredExcelLoader`` (xls), or ``CSVLoader`` (csv). Other extensions raise ``ValueError``.
+
+    If ``file_path`` is not a direct filesystem path, the tool also tries
+    ``Path(FILE_DIR) / file_path`` as a fallback.
+
+    Args:
+        file_path (str): Path to the file to read (e.g. ``/path/to/your/document.pdf``).
+
+    Returns:
+        str: Extracted text content, or a human-readable error/status message on failure.
     """
     # check the passed in file path
     file_full_path = Path(file_path)
@@ -39,7 +43,7 @@ def tool_custom_file_read (file_path:str) -> str:
         logger.info("File is under valid directory and exist: %s", file_full_path)
     else:
         # check the file with the actual physical path
-        file_full_path = Path.cwd() / FILE_DIR / file_path.lstrip("/") 
+        file_full_path = Path(FILE_DIR) / file_path.lstrip("/") 
         if(file_full_path.is_file()):
             logger.info("File is under valid directory and exist with actual physical path: %s", file_full_path)
         else:

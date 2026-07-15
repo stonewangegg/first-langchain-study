@@ -1,36 +1,33 @@
-"""Researcher deep-agent for fetching CNINFO financial disclosure reports.
+"""Researcher deep-agent that fetches CNINFO financial disclosure reports.
 
-Builds a ``Researcher`` deep agent (on top of ``langchain-deepagents``) that
-autonomously plans, downloads, and catalogs annual/quarterly PDF reports for
-a listed company from the *CNINFO* (巨潮资讯) platform, then persists the
-metadata of every retrieved file as a JSON manifest inside its virtual
-workspace.
+Plans, downloads, and catalogs annual/quarterly PDFs for a listed company
+from *CNINFO* (巨潮资讯), then writes a JSON manifest of the retrieved files
+to its virtual workspace.
 
 Environment variables
 ---------------------
-* ``MAX_COMPLETION_TOKENS`` — LLM context window (default ``"16384"``).
-* ``FILE_DIR`` — sandbox directory for the agent's ``FilesystemBackend``
+* ``MAX_COMPLETION_TOKENS`` -- LLM context window (default ``"16384"``).
+* ``FILE_DIR`` -- sandbox root for the agent's ``FilesystemBackend``
   (default ``"./tmp"``).
 
 Quickstart
 ----------
-Call :func:`create_researcher_agent` with a ``ModelObj`` (see
-``sl_finance_agent.agent_graph``) and invoke the returned agent, e.g.::
+::
 
-    agent = create_researcher_agent(model_obj)
+    from sl_finance_agent.agent_graph import ModelObj
+    agent = create_researcher_agent(ModelObj(...))
     agent.invoke({"messages": [{
         "role": "user",
         "content": (
             'Download the 2023 annual report of "平安银行" and the Q2 2024 '
-            'quarterly report of "000001", then write the metadata manifest '
-            'to "manifest.json".'
+            'quarterly report of "000001", then write the manifest to '
+            '"manifest.json".'
         ),
     }]})
 
-The agent plans the downloads, fetches them sequentially through the
-``tool_cninfo_report_downloader`` skill, and finishes by writing a JSON
-manifest whose entries contain at least ``title``, ``path`` and ``type`` for
-every successfully retrieved PDF.
+The agent fetches reports sequentially via ``tool_cninfo_report_downloader``
+and writes a manifest whose entries include ``title``, ``path`` and ``type``
+for every downloaded PDF.
 """
 
 # export MAX_COMPLETION_TOKENS as a passin varaible
@@ -148,7 +145,7 @@ def save_json_file(
     Save structured data as a JSON file.
 
     Args:
-        file_path: Workspace-relative path.
+        file_path: Workspace-relative file path.
         data: content (dict/list/object) to save.
     """
 

@@ -1,31 +1,29 @@
-"""
-This module provides LangChain-compatible tools for writing files to the local
-filesystem from within an agent. It exposes two main tools:
+"""LangChain tools for writing files to the local filesystem from within an agent.
 
-1. ``tool_custom_file_write``
-    A general-purpose plain-text file writer. It supports writing any text-based
-    content (e.g. ``.txt``, ``.json``, ``.md``, ``.csv``) to a file located under
-    a pre-configured root directory (``FILE_ROOT_DIR``). The tool performs path
-    validation, content sanity checks, and delegates the actual write operation
-    to LangChain's built-in :class:`WriteFileTool`.
+Exposes two ``@tool``-decorated functions:
 
-2. ``tool_generate_word_doc``
-    A specialized tool that converts Markdown-formatted text (headings, bold,
-    and bullet lists) into a Microsoft Word document (``.docx``) using
-    ``python-docx`` and saves it to a validated path under ``FILE_ROOT_DIR``.
+* :func:`tool_custom_file_write` -- writes plain-text content to a file using LangChain's
+  built-in :class:`WriteFileTool`. The file path is validated to ensure its parent
+  directory equals the project-wide file directory (``FILE_DIR``); any other location
+  is rejected.
+* :func:`tool_generate_word_doc` -- generates a Microsoft Word document (``.docx``) from
+  a title and Markdown-formatted content using ``python-docx`` and saves it to a path
+  validated by :class:`TargetPathValidation` (must start with ``FILE_DIR``). If the
+  supplied ``store_path`` is not under ``FILE_DIR``, the file is saved to the default
+  ``FILE_DIR`` root as a fallback.
 
 Environment
 -----------
-- ``FILE_ROOT_DIR`` (optional)
-    Environment variable that constrains where files may be written. If unset,
-    the current working directory is used. Any write attempt targeting a path
-    outside this root will be rejected (for ``tool_custom_file_write``) or
-    fall back to this root (for ``tool_generate_word_doc``).
+- ``FILE_DIR`` (imported from :mod:`sl_finance_agent.common_utils`)
+    The project-wide base directory that constrains where files may be written.
+    For :func:`tool_custom_file_write` the parent directory of ``file_path`` must
+    equal ``FILE_DIR``; for :func:`tool_generate_word_doc` the ``store_path`` must
+    start with ``FILE_DIR`` (paths outside it fall back to ``FILE_DIR``).
 
 Typical use
 -----------
-These tools are decorated with ``@tool`` (or ``@tool(args_schema=...)``) so
-they can be registered directly with a LangChain agent::
+These tools are decorated with ``@tool`` (or ``@tool(args_schema=...)``) so they
+can be registered directly with a LangChain agent::
 
     from tools_file_write_read.tool_file_write import (
         tool_custom_file_write,
@@ -42,26 +40,30 @@ from langchain.tools import tool
 from langchain_community.tools import WriteFileTool
 from pydantic import BaseModel, Field, field_validator
 
-from ..common_utils import get_logger
+from ..common_utils import get_logger, FILE_DIR
 logger = get_logger(__name__)
-
-FILE_ROOT_DIR = os.environ.get("FILE_ROOT_DIR", os.getcwd())
 
 @tool
 def tool_custom_file_write(file_path:str, content: str) -> str:
-    """
-    Write txt content to a file. Such as text, json, markdown.
+    """Write plain-text content (e.g. ``.txt``, ``.json``, ``.md``, ``.csv``) to a file under ``FILE_DIR``.
+
+    The ``file_path``'s parent directory must equal ``FILE_DIR``; otherwise the call is rejected.
+    Empty ``content`` raises an error. The actual write is delegated to
+    :class:`langchain_community.tools.WriteFileTool`.
+
     Args:
-       file_path: The path save the file. e.g. path/to/your/file.md
-       content: The text content to write to the file.
-    Return: The file path if success, else return error message.
+        file_path: Destination path (e.g. ``path/to/your/file.md``). Parent dir must be ``FILE_DIR``.
+        content: The text content to write.
+
+    Returns:
+        The write result message on success, or an error message on failure.
     """
     # Initialize the tool
     # Ensure the root_dir is set to where you want the file to be created
     file_full_path = file_path
     try:
         dir_name = os.path.dirname(file_full_path)
-        if dir_name == FILE_ROOT_DIR:
+        if dir_name == FILE_DIR:
             logger.info("Write file, file path is under current woring directory: %s", file_full_path)
         else:
             logger.error("⚠️ Write file: file path is not under the current file directory: %s", file_full_path)
@@ -132,10 +134,10 @@ class TargetPathValidation(BaseModel):
         Validate the file path of LLM call parameter before tool call
         """
         v = v.strip().lower()
-        if not v.startswith(FILE_ROOT_DIR):
-            logger.error(" The file path is invalid: %s ... The correct should start with: %s", v, FILE_ROOT_DIR)
+        if not v.startswith(FILE_DIR):
+            logger.error(" The file path is invalid: %s ... The correct should start with: %s", v, FILE_DIR)
             raise ValueError(
-                f"Invalid file path '{v}'. The correct should start with '{FILE_ROOT_DIR}'. Check the file path parameter and retry."
+                f"Invalid file path '{v}'. The correct should start with '{FILE_DIR}'. Check the file path parameter and retry."
             )
         return v
 
@@ -158,7 +160,7 @@ def tool_generate_word_doc(title: str, content: str, store_path:str) -> str:
     # 保存路径
     local_path_file = ""
     local_path = store_path
-    if local_path.startswith(FILE_ROOT_DIR):
+    if local_path.startswith(FILE_DIR):
         if os.path.isdir(local_path):
             local_path_file = os.path.join(local_path, filename)
         elif local_path.endswith(".docx"):
@@ -169,8 +171,8 @@ def tool_generate_word_doc(title: str, content: str, store_path:str) -> str:
 
         logger.info("📌 Specify Word document generate PATH: %s", local_path_file)
     else:
-        os.makedirs(FILE_ROOT_DIR, exist_ok=True)
-        local_path_file = os.path.join(FILE_ROOT_DIR, filename)
+        os.makedirs(FILE_DIR, exist_ok=True)
+        local_path_file = os.path.join(FILE_DIR, filename)
         logger.warning("❌ Invalid Word document generate PATH: %s, 📌 use the default file root path : %s ", store_path, local_path_file)
 
     try:
