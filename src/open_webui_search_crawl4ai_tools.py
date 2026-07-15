@@ -334,11 +334,11 @@ class Tools:
 
         uru_logger.get_logger().info("Web Search and Crawl tool initialized")
 
-    async def search_crawl(self, user_prompt: str, mode_str: str) -> str:
+    async def search_crawl(self, agent_name: str, user_prompt: str, mode_str: str) -> str:
         """
         """
 
-        crawlAgents = CrawlAgents("ComapnyCrawler")
+        crawlAgents = CrawlAgents(agent_name)
 
         model_obj = model_factory(mode_str)
 
@@ -384,7 +384,7 @@ if __name__ == "__main__":
 
     tools = Tools()
 
-    asyncio.run(tools.search_crawl(user_prompt=user_prompt_final, mode_str=model_str))
+    asyncio.run(tools.search_crawl(agent_name="ComapnyCrawler",user_prompt=user_prompt_final, mode_str=model_str))
 
 
     
