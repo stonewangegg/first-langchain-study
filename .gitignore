@@ -21,6 +21,8 @@ Thumbs.db
 
 # Environment variables
 .env
+.lock
+.toml
 
 # Testing
 .pytest_cache/
