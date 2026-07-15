@@ -2,6 +2,11 @@
 Agent researcher testing
 """
 
+import os
+
+os.environ["FILE_DIR"] = "/home/hzsto/study/langchain/first-start/src/tmp"
+
+
 from jinja2 import Template
 from sl_finance_agent import create_researcher_agent, SUPPORTED_LLM_TYPES, model_factory, get_logger
 
@@ -9,6 +14,7 @@ from sl_finance_agent import create_researcher_agent, SUPPORTED_LLM_TYPES, model
 logger = get_logger(__name__)
 
 if __name__ == "__main__":
+
 
     user_prompt_test = """
     ## 目标上市公司: "{{company_name}}"

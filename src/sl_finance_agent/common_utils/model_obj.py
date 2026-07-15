@@ -32,8 +32,6 @@ MAX_COMPLETION_TOKENS = os.environ.get("MAX_COMPLETION_TOKENS", "16384")
 # current working directory
 CURRENT_WORKING_DIR = os.getcwd()
 FILE_DIR = os.environ.get("FILE_DIR", "./tmp")
-# export FILE_ROOT_DIR="/your/file/root/dir"
-FILE_ROOT_DIR = str(Path(CURRENT_WORKING_DIR) / Path(FILE_DIR))
 
 @dataclass
 class ModelObj:

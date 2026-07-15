@@ -8,11 +8,14 @@ import sys
 # NOTE: change it when install this tool into open-webui, get the sl_finance_agent abs path and replace below
 sys.path.append("/home/hzsto/study/langchain/first-start/src")
 
+# set the file working dir before all initialize
+os.environ["FILE_DIR"] = "/home/hzsto/study/langchain/first-start/src/tmp"
+
 from pathlib import Path
 from typing import Any
 from jinja2 import Template
 
-from sl_finance_agent import CustomWorkflowState, graph_one, ModelObj, get_logger
+from sl_finance_agent import CustomWorkflowState, graph_one, ModelObj, get_logger, FILE_DIR
 
 class Tools:
 
@@ -29,7 +32,7 @@ class Tools:
         )
 
         # make the file working dir if needed
-        self.file_dir = Path(os.getcwd()) / Path("./tmp")
+        self.file_dir = Path(FILE_DIR)
         if not self.file_dir.exists():
             os.makedirs(self.file_dir, exist_ok=True)
             self.logger.info(f"Create file work space directory: {self.file_dir}")

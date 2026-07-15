@@ -54,7 +54,7 @@ import json
 from pydantic import SecretStr
 
 from ..cninfo_report_downloader import CNInfoReportDownloader
-from ..common_utils import ModelObj, SUPPORTED_LLM_TYPES, get_logger, MAX_COMPLETION_TOKENS, FS_BACKEND, FILE_ROOT_DIR
+from ..common_utils import ModelObj, SUPPORTED_LLM_TYPES, get_logger, MAX_COMPLETION_TOKENS, FS_BACKEND, FILE_DIR
 
 # system prompt for research agent
 RESEARCHER_SYSTEM_PROMPT = """
@@ -91,13 +91,13 @@ def tool_cninfo_report_downloader(company: str, year:str, file_type:str, quarter
     """
 
     # Check if the string starts with the current working path
-    logger.debug("The required file store path is: %s; file root dir is: %s", store_path, FILE_ROOT_DIR)
+    logger.warning("The required file store path is: %s; file root dir is: %s", store_path, FILE_DIR)
     local_store_path = store_path
     path_obj = Path(local_store_path)
     if local_store_path.endswith("/") or not path_obj.suffix:
         if local_store_path.startswith("/"):
             local_store_path = local_store_path.removeprefix("/")
-        local_store_path = str(Path(FILE_ROOT_DIR) / local_store_path)
+        local_store_path = str(Path(FILE_DIR) / local_store_path)
         os.makedirs(local_store_path, exist_ok=True)
         logger.info("The required store path is valid, the phisic file store path is: %s", local_store_path)
     elif path_obj.is_file():
@@ -192,14 +192,14 @@ class MessageLimitMiddleware(AgentMiddleware):
         return None
 
     def after_model(self, state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
-        last_two_messages = state["messages"][-2:]
+        last_two_messages = state["messages"][-5:]
         
         for i, msg in enumerate(last_two_messages):
-            logger.info("<------ [%s] The Model returned Message (last two) [%d]: Role=%s, Content='%s'\n", self.agent_name, i, msg.type, msg.content)
+            logger.info("<------ [%s] The Model returned Message (last 5) [%d]: Role=%s, Content='%s'\n", self.agent_name, i, msg.type, msg.content)
 
             if isinstance(msg, AIMessage) and msg.tool_calls:
                 for tool_call in msg.tool_calls:
-                    logger.info(f"TOOL REQUEST ==> Name: f{tool_call['name']}, ARGS: {tool_call['args']}")
+                    logger.info(f"TOOL REQUEST ==> Name: {tool_call['name']}, ARGS: {tool_call['args']}")
 
         # messages = state["messages"]
         # for i, msg in enumerate(messages):
