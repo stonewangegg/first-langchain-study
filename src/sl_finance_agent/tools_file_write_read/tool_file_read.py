@@ -272,4 +272,4 @@ if __name__ == "__main__":
         content = page.page_content
         full_text_content.append(content)
     
-    print(f"FULL TEXT CONTENT: \n\n{"\n\n".join(full_text_content)}")
+    print(f"FULL TEXT CONTENT: \n{"\n**************************************\n".join(full_text_content)}")

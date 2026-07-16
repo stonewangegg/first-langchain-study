@@ -151,7 +151,7 @@ def tool_tavily_search(query: str, max_results: int, time_range: str = "month", 
             json_string = json.dumps(shrink_raw_results, ensure_ascii=False, indent=2)
 
             logger.debug("Json Result of tavily searching: %s\n", json_string)
-            logger.info(f"Shrink Result length[{len(shrink_raw_results["results"])}] of tavily searching with query: '{query}' ")
+            logger.info("Shrink Result length[%d] of tavily searching with query: '%s' ", len(shrink_raw_results["results"]), query)
             return f"Search results: {json_string}"
         else:
             logger.warning("No results found.")

@@ -23,6 +23,8 @@ class Tools:
 
         self.logger = get_logger(__name__)
 
+        self.download_url = "http://192.168.8.50:8082/"
+
         # llm configure
         self.model_obj = ModelObj(
             llm_type = "vllm",

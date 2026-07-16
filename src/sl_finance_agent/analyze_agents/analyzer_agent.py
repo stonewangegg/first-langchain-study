@@ -46,7 +46,7 @@ from langchain_core.caches import InMemoryCache
 from langchain_core.globals import set_llm_cache
 
 from ..tools_file_write_read import tool_custom_file_read
-from ..common_utils import ModelObj, get_logger, FS_BACKEND, get_current_time, resolve_llm
+from ..common_utils import ModelObj, get_logger, FS_BACKEND, get_current_time, get_file_dir, resolve_llm
 
 ANALYST_SYSTEM_PROMPT = """
 # You are a senior financial analyst of a listed company.
@@ -54,10 +54,10 @@ ANALYST_SYSTEM_PROMPT = """
 ## Your goal is to review and analyze the target PDF files descriped in meta data json file.
 
 ## Core Steps
-1. Firstly: You find and review the json file to make a plan for reading target PDF files one by on.
-2. Secondly: You use `tool_custom_file_read` to read one file finished and then read the next file, **Do Not allow Parallel reading**.
+1. Firstly: You find and review the json file to make a plan for reading target PDF files one by one.
+2. Secondly: You use `tool_custom_file_read` to read target PDF file follow the plan, you must finish one and then the next one, **Do Not allow Parallel reading**.
 3. Thirdly: Analyze and summary the content follow the skill 'senior-financial-dupont-analyst'.
-4. Finally: Generate report file with markdown format.
+4. Finally: Generate report file with markdown format, then copy the report file into folder:`/app/backend/shared-files`. **And send back the report file full name**.
 
 ## Core Principles
 - You should anaylyze and summarize content base on corresponding skill of "senior-financial-dupont-analyst".
@@ -178,7 +178,7 @@ def create_analyzer_agent(model_obj: ModelObj):
         model=model,
         skills=["/skills/"],
         backend=FS_BACKEND,
-        tools=[get_current_time, tool_custom_file_read],
+        tools=[get_current_time, get_file_dir, tool_custom_file_read],
         system_prompt=ANALYST_SYSTEM_PROMPT,
         middleware=[messageLimitMiddleware, toolCallLimitMiddleware],
     )
