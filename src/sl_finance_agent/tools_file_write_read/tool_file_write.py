@@ -32,8 +32,11 @@ can be registered directly with a LangChain agent::
 """
 
 import os
+from pathlib import Path
 import re
+import shutil
 import time
+from typing import Optional
 
 from docx import Document
 from langchain.tools import tool
@@ -187,3 +190,48 @@ def tool_generate_word_doc(title: str, content: str, store_path:str) -> str:
     except Exception as e:
         logger.error("❌ Word generated Error: %s", e)
         return f"❌ Word generated Error: {str(e)}"
+
+@tool
+def copy_file_to_folder(
+    source: str | Path,
+    target_folder: str | Path,
+    new_filename: Optional[str] = None,
+    overwrite: bool = False,
+) -> str:
+    """Copy ``source`` into ``target_folder``.
+
+    Args:
+        source: Path to the file to copy.
+        target_folder: Destination directory. Created (with parents) if missing.
+        new_filename: Optional new name for the copied file. If ``None`` the
+            original basename is kept.
+        overwrite: If ``True``, an existing file with the same name will be
+            replaced. Defaults to ``False`` to avoid accidental overwrites.
+
+    Returns:
+        The Name string of the newly created file.
+
+    Raises:
+        FileNotFoundError: If ``source`` does not exist or is not a file.
+        NotADirectoryError: If ``target_folder`` exists but is not a directory.
+        FileExistsError: If a file with the target name already exists and
+            ``overwrite`` is ``False``.
+    """
+    src_path = Path(source)
+    if not src_path.is_file():
+        logger.warning(f"Source file not found: {src_path}")
+        raise FileNotFoundError(f"Source file not found: {src_path}")
+
+    dst_folder = Path(target_folder)
+    dst_folder.mkdir(parents=True, exist_ok=True)
+    if not dst_folder.is_dir():
+        raise NotADirectoryError(f"Target path is not a directory: {dst_folder}")
+
+    dst_path = dst_folder / (new_filename or src_path.name)
+    if dst_path.exists() and not overwrite:
+        raise FileExistsError(f"File already exists: {dst_path}")
+
+    # ``shutil.copy2`` preserves metadata (mtime, atime) in addition to the
+    # file contents, which is usually what you want for a simple copy.
+    shutil.copy2(src_path, dst_path)
+    return dst_path.name

@@ -9,7 +9,7 @@ from .common_utils import SUPPORTED_LLM_TYPES, ModelObj, model_factory
 from .analyze_agents import create_analyzer_agent
 from .crawl_agents import CrawlAgents
 from .cninfo_report_downloader import CNInfoReportDownloader
-from .tools_file_write_read import tool_custom_file_read, tool_custom_file_write, tool_generate_word_doc
+from .tools_file_write_read import tool_custom_file_read, tool_custom_file_write, tool_generate_word_doc, copy_file_to_folder
 from .tools_web_search_crawl import tool_tavily_search, tool_searxng_search, tool_duckduckgo_search
 from .tools_web_search_crawl import tool_searxng_search_urls, common_web_search_crawl, tool_research_crawl
 from .collaborator_agents import agent_collaborator
@@ -24,7 +24,8 @@ __all__ = [
     "CNInfoReportDownloader", 
     "tool_custom_file_read", 
     "tool_custom_file_write", 
-    "tool_generate_word_doc", 
+    "tool_generate_word_doc",
+    "copy_file_to_folder", 
     "tool_tavily_search", 
     "tool_searxng_search",
     "tool_searxng_search_urls",
