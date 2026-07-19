@@ -198,7 +198,7 @@ def copy_file_to_folder(
     new_filename: Optional[str] = None,
     overwrite: bool = False,
 ) -> str:
-    """Copy ``source`` into ``target_folder``.
+    """Copy ``source`` file into ``target_folder``.
 
     Args:
         source: Path to the file to copy.

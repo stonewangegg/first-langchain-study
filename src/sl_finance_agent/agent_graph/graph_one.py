@@ -62,8 +62,7 @@ def researcher_node(state: CustomWorkflowState):
 def analyzer_node(state: CustomWorkflowState):
     
     prompt = f"""
-    Find and read the meta data json file, then review all target files with the meta data in the json file. Analyze and generate the report, 
-    copy the report file to the destination directory:'/app/backend/shared-files', return the report file name.
+    Find and read the meta data json file, then review all target files with the meta data in the json file. Analyze and generate the report base on requirement. 
     Reference the Research Result below:
     {state['research_result']}
     """

@@ -1,5 +1,14 @@
 """
 """
+import os
+import sys
+
+# add the sl_finance_agent directory to system path on runtime
+# NOTE: change it when install this tool into open-webui, get the sl_finance_agent abs path and replace below
+sys.path.append("/home/hzsto/study/langchain/first-start/src")
+
+# set the file working dir before all initialize
+os.environ["FILE_DIR"] = "/home/hzsto/study/langchain/first-start/src/tmp"
 
 import asyncio
 from typing import Literal
@@ -334,35 +343,134 @@ class Tools:
 
         uru_logger.get_logger().info("Web Search and Crawl tool initialized")
 
-    async def search_crawl(self, agent_name: str, user_prompt: str, mode_str: str) -> str:
+    async def search_crawl(self, agent_name: str, user_prompt: str, mode_str: str, __event_emitter__=None) -> str:
         """
         """
 
         crawlAgents = CrawlAgents(agent_name)
 
         model_obj = model_factory(mode_str)
-
-        final_content = None
-
-        # Invoke the agent
+        
+        final_answer = ""
         if model_obj:
+
+            uru_logger.get_logger().info(f"🚀 Starting the **Main Graph** workflow for: '{user_prompt}'\n\nTo the model: '{model_obj}'")
+
+            if __event_emitter__:
+                await __event_emitter__(
+                    {
+                        "type": "status",
+                        "data": {
+                            "description": "🚀 Starting Listed Company Research&Crawl Agent financial analysis...",
+                            "done": False,
+                        },
+                    }
+                )
+
+            try:
+                final_response = {}
+                # invoke the agent graph one via astream_events 
+                async for event in crawlAgents.create_crawler_agent(model_obj).astream_events(
+                    {
+                        "messages": [
+                            {
+                                "role": "user",
+                                "content": user_prompt,
+                            }
+                        ]
+                    },
+                    version="v2",
+                ):
+                    event_type = event.get("event", "")
+
+                    # event tool start 
+                    if event_type == "on_tool_start":
+
+                        tool_name = event.get("name", "unknown_tool")
+
+                        uru_logger.get_logger().info(f"Tool started: {tool_name}")
+
+                        if __event_emitter__:
+                            await __event_emitter__(
+                                {
+                                    "type": "status",
+                                    "data": {
+                                        "description": f"🔧 LangChain agent Running invoke: {tool_name}",
+                                        "done": False,
+                                    },
+                                }
+                            )
+
+                    # Tool finished
+                    elif event_type == "on_tool_end":
+                        tool_name = event.get("name", "unknown_tool")
+                        uru_logger.get_logger().info(f"Tool completed: {tool_name}")
+
+                    # Node started
+                    elif event_type == "on_chain_start":
+                        node_name = event.get("name", "")
+                        if node_name:
+                            uru_logger.get_logger().info(f"Node started: {node_name}",)
+
+                    # Graph completed
+                    elif event_type == "on_chain_end":
+                        # get the agent final result data
+                        data = event.get("data", {})
+                        output = data.get("output")
+                        if isinstance(output, dict):
+                            final_response = output
+
+            except Exception as ex:
+
+                uru_logger.get_logger().exception(f"Workflow execution failed: {str(ex)}")
+
+                if __event_emitter__:
+                    await __event_emitter__(
+                        {
+                            "type": "status",
+                            "data": {
+                                "description": f"❌ Graph Workflow execution Failed: {str(ex)}",
+                                "done": True,
+                            },
+                        }
+                    )
+
+                return f"❌ Graph Workflow execution Failed: {str(ex)}"
+
+            if final_response is None:
+                raise RuntimeError("❌ Lang Graph one completed without returning a state. Check and try again.")
+
+            final_answer = final_response["messages"][-1].content
+
+            if __event_emitter__:
+                await __event_emitter__(
+                    {
+                        "type": "status",
+                        "data": {
+                            "description": "✅ Analysis completed",
+                            "done": True,
+                        },
+                    }
+                )
+
+
             # Invoke the agent
-            final_response = await crawlAgents.create_crawler_agent(model_obj).ainvoke(
-                                                                        {
-                                                                            "messages": [
-                                                                                {
-                                                                                    "role": "user",
-                                                                                    "content": user_prompt,
-                                                                                }
-                                                                            ]
-                                                                        }
-                                                                    )
+            # final_response = await crawlAgents.create_crawler_agent(model_obj).ainvoke(
+            #                                                             {
+            #                                                                 "messages": [
+            #                                                                     {
+            #                                                                         "role": "user",
+            #                                                                         "content": user_prompt,
+            #                                                                     }
+            #                                                                 ]
+            #                                                             }
+            #                                                         )
 
-            final_content = final_response["messages"][-1].content
-            # Print the agent's response
-            uru_logger.get_logger().info("\n**Final response**: \n" + final_content)
+            # final_content = final_response["messages"][-1].content
+            # # Print the agent's response
+            # uru_logger.get_logger().info("\n**Final response**: \n" + final_content)
 
-        return final_content or ""
+        return final_answer or ""
 
 
 if __name__ == "__main__":

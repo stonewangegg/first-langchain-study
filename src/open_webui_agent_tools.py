@@ -136,7 +136,7 @@ class Tools:
                             {
                                 "type": "status",
                                 "data": {
-                                    "description": f"🔧 Running: {tool_name}",
+                                    "description": f"🔧 LangChain agent Running invoke: {tool_name}",
                                     "done": False,
                                 },
                             }
