@@ -81,7 +81,7 @@ def tool_custom_file_write(file_path:str, content: str) -> str:
             logger.error("❌ Write file, content is empty")
             raise ValueError("❌ Write file, content is empty")
 
-        write_tool = WriteFileTool(root_dir=file_full_path)
+        write_tool = WriteFileTool(root_dir=FILE_DIR)
 
         # Write the file
         result = write_tool.run({

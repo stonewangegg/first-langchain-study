@@ -17,7 +17,147 @@ from urllib.parse import parse_qs, urlparse
 from jinja2 import Template
 from pydantic import BaseModel, Field, model_validator
 
+from langchain_core.callbacks import AsyncCallbackHandler
+
 from sl_finance_agent import common_web_search_crawl, uru_logger, SUPPORTED_LLM_TYPES, model_factory, CrawlAgents
+
+class OpenWebUIEventCallback(AsyncCallbackHandler):
+
+    def __init__(self, event_emitter=None, logger=None):
+        self._event_emitter = event_emitter
+        self._logger = logger
+
+    async def _emit(self, description: str, done: bool = False):
+        if self._event_emitter:
+            await self._event_emitter(
+                {
+                    "type": "status",
+                    "data": {
+                        "description": description,
+                        "done": done,
+                    },
+                }
+            )
+
+    #
+    # ---------- Model ----------
+    #
+
+    async def on_chat_model_start(self, serialized, messages, **kwargs):
+        if self._logger:
+            self._logger.info("🤖 Chat model started")
+
+        await self._emit("🤖 Thinking...")
+
+    async def on_llm_end(self, response, **kwargs):
+        if self._logger:
+            self._logger.info("🤖 Chat model finished")
+
+    async def on_llm_error(
+        self,
+        error: BaseException,
+        *,
+        run_id,
+        parent_run_id=None,
+        **kwargs,
+    ):
+        """
+        Called whenever the model invocation fails.
+        """
+
+        if self._logger:
+            self._logger.exception(
+                f"❌ LLM failed: {type(error).__name__}: {error}"
+            )
+
+        await self._emit(
+            f"❌ LLM failed: {type(error).__name__}",
+            done=True,
+        )
+
+    #
+    # ---------- Tool ----------
+    #
+
+    async def on_tool_start(
+        self,
+        serialized,
+        input_str,
+        *,
+        run_id,
+        parent_run_id=None,
+        **kwargs,
+    ):
+        tool_name = serialized.get("name", "Unknown")
+
+        if self._logger:
+            self._logger.info(f"🔧 Tool started: {tool_name}")
+
+        await self._emit(
+            f"🔧 Running tool: {tool_name}"
+        )
+
+    async def on_tool_end(
+        self,
+        output,
+        *,
+        run_id,
+        parent_run_id=None,
+        **kwargs,
+    ):
+        if self._logger:
+            self._logger.info("🛠 Tool finished")
+
+    async def on_tool_error(
+        self,
+        error: BaseException,
+        *,
+        run_id,
+        parent_run_id=None,
+        **kwargs,
+    ):
+        """
+        Called whenever ANY LangChain tool throws an exception.
+        """
+
+        if self._logger:
+            self._logger.exception(
+                f"❌ Tool failed: {type(error).__name__}: {error}"
+            )
+
+        await self._emit(
+            f"❌ Tool failed: {type(error).__name__}",
+            done=False,
+        )
+
+    #
+    # ---------- Chain ----------
+    #
+
+    # async def on_chain_start(
+    #     self,
+    #     serialized,
+    #     inputs,
+    #     *,
+    #     run_id,
+    #     parent_run_id=None,
+    #     **kwargs,
+    # ):
+    #     name = serialized.get("name", "Chain")
+
+    #     if self._logger:
+    #         self._logger.info(f"▶ Chain start: {name}")
+
+    # async def on_chain_end(
+    #     self,
+    #     outputs,
+    #     *,
+    #     run_id,
+    #     parent_run_id=None,
+    #     **kwargs,
+    # ):
+    #     if self._logger:
+    #         self._logger.info("✔ Chain finished")
 
 
 class Tools:
@@ -342,12 +482,30 @@ class Tools:
         self.total_urls = 0
 
         uru_logger.get_logger().info("Web Search and Crawl tool initialized")
+    
 
-    async def search_crawl(self, agent_name: str, user_prompt: str, mode_str: str, __event_emitter__=None) -> str:
-        """
+    async def search_crawl(self, user_prompt: str, __event_emitter__=None, agent_name: str="ComapnyCrawler", mode_str: str="vllm") -> str:
+        """Run the crawler agent graph and stream progress to OpenWebUI.
+
+        Args:
+            user_prompt: Initial user-role message fed into the graph.
+            __event_emitter__: Optional OpenWebUI emitter for lifecycle status events.
+            agent_name: Crawler config name passed to :class:`CrawlAgents`.
+            mode_str: LLM backend key (see :data:`SUPPORTED_LLM_TYPES`).
+
+        Returns:
+            Last assistant message from the graph, or ``""`` if no model was resolved.
+
+        Raises:
+            RuntimeError: If the graph ends without producing a state.
         """
 
         crawlAgents = CrawlAgents(agent_name)
+
+        callback = OpenWebUIEventCallback(
+            event_emitter=__event_emitter__,
+            logger=uru_logger.get_logger(),
+        )
 
         model_obj = model_factory(mode_str)
         
@@ -368,9 +526,11 @@ class Tools:
                 )
 
             try:
-                final_response = {}
-                # invoke the agent graph one via astream_events 
-                async for event in crawlAgents.create_crawler_agent(model_obj).astream_events(
+                
+                # invoke the agent graph one via astream_events
+                agentGragh = crawlAgents.create_crawler_agent(model_obj)
+
+                final_response = await agentGragh.ainvoke(
                     {
                         "messages": [
                             {
@@ -379,46 +539,10 @@ class Tools:
                             }
                         ]
                     },
-                    version="v2",
-                ):
-                    event_type = event.get("event", "")
-
-                    # event tool start 
-                    if event_type == "on_tool_start":
-
-                        tool_name = event.get("name", "unknown_tool")
-
-                        uru_logger.get_logger().info(f"Tool started: {tool_name}")
-
-                        if __event_emitter__:
-                            await __event_emitter__(
-                                {
-                                    "type": "status",
-                                    "data": {
-                                        "description": f"🔧 LangChain agent Running invoke: {tool_name}",
-                                        "done": False,
-                                    },
-                                }
-                            )
-
-                    # Tool finished
-                    elif event_type == "on_tool_end":
-                        tool_name = event.get("name", "unknown_tool")
-                        uru_logger.get_logger().info(f"Tool completed: {tool_name}")
-
-                    # Node started
-                    elif event_type == "on_chain_start":
-                        node_name = event.get("name", "")
-                        if node_name:
-                            uru_logger.get_logger().info(f"Node started: {node_name}",)
-
-                    # Graph completed
-                    elif event_type == "on_chain_end":
-                        # get the agent final result data
-                        data = event.get("data", {})
-                        output = data.get("output")
-                        if isinstance(output, dict):
-                            final_response = output
+                    config={
+                        "callbacks": [callback],
+                    },
+                )
 
             except Exception as ex:
 
@@ -453,32 +577,15 @@ class Tools:
                     }
                 )
 
-
-            # Invoke the agent
-            # final_response = await crawlAgents.create_crawler_agent(model_obj).ainvoke(
-            #                                                             {
-            #                                                                 "messages": [
-            #                                                                     {
-            #                                                                         "role": "user",
-            #                                                                         "content": user_prompt,
-            #                                                                     }
-            #                                                                 ]
-            #                                                             }
-            #                                                         )
-
-            # final_content = final_response["messages"][-1].content
-            # # Print the agent's response
-            # uru_logger.get_logger().info("\n**Final response**: \n" + final_content)
-
         return final_answer or ""
 
 
 if __name__ == "__main__":
 
     user_prompt_test = """
-    # 目标上市公司: "{{company_name}}"
+    ### 目标上市公司: "{{company_name}}"
 
-    ## 搜索获取最近'{{time_range}}'，网络上发布的目标上市公司所属信息与数据, 根据用户要求: '{{query_str}}',与SKILL: `{{skill_name}}` 进行分析、总结, 并生成报告。
+    - 搜索获取最近'{{time_range}}'，网络上发布的目标上市公司所属信息与数据, 按照用户要求: '{{query_str}}', 并根据指定SKILL: `{{skill_name}}` 进行详细分析、总结, 并生成报告
     """
 
     # get the user input parameters value

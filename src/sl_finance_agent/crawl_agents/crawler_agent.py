@@ -44,6 +44,7 @@ from langchain.messages import AIMessage
 
 from ..common_utils import ModelObj, resolve_llm, uru_logger, get_current_time, FS_BACKEND
 from ..tools_web_search_crawl import tool_tavily_search, tool_research_crawl
+from ..tools_file_write_read import tool_custom_file_write, copy_file_to_folder
 
 
 # system prompt for crawl agent
@@ -58,9 +59,10 @@ INDUSTRY_CRAWLER_SYSTEM_PROMPT = """
 2. Secondly: You must make sure all web search and data crawl in time, use `tool_tavily_func` to search target page urls with the query in user prompt, 
 stop when urls number is enough for query or reach 15.
 3. Thirdly: Use `research_crawl` to crawl all searched target urls, with the query in user prompt as one parameter, 
-use `tool_custom_file_write` write all return content to the file in markdown format, with name is constructed as keywords as prefixes and timestamps as suffixes 
-4. Finally: You must review all crawled content in the file from previous step, anaylze and summarize, 
+use `tool_custom_file_write` write all return content to a raw content file in markdown format, with name is constructed as keywords as prefixes and timestamps as suffixes 
+4. Fourthly: You must review all crawled content in the file from previous step, anaylze and summarize, 
 generate the final report with `tool_custom_file_write` in markdown format.
+5. Finally: Use `copy_file_to_folder` copy the report file into folder path '/app/backend/shared-files', and return the name of report file.
 
 ## Constraints 
 - Critical High Rule: Do not call concurrency `tool_tavily_func` or `research_crawl` request, You must wait the first call complete, check the return results, 
@@ -104,7 +106,7 @@ class MessageLimitMiddleware(AgentMiddleware):
         last_four_messages = state["messages"][-4:]
         
         for i, msg in enumerate(last_four_messages):
-            uru_logger.get_logger().info(f"<------ {self.agent_name} The Model returned Message (last four) {i}: Role={msg.type}, Content={msg.content}\n")
+            uru_logger.get_logger().info(f"<------ {self.agent_name} The Model returned Message (last four) {i}: Role={msg.type}, Content={msg.content}")
 
             if isinstance(msg, AIMessage) and msg.tool_calls:
                 for tool_call in msg.tool_calls:
@@ -151,14 +153,14 @@ class CrawlAgents:
             A configured ``create_deep_agent`` instance ready to be invoked.
         """
         model = resolve_llm(model_obj)
-        uru_logger.get_logger().info("Creating Crawler deep agent with llm_type=%s", model_obj)
+        uru_logger.get_logger().info(f"Creating Crawler deep agent with llm_type={model_obj}")
 
         return create_deep_agent(
             name=self.agent_name,
             model=model,
             skills=["/skills/"],
             backend=FS_BACKEND,
-            tools=[get_current_time, tool_tavily_search, tool_research_crawl],
+            tools=[get_current_time, tool_tavily_search, tool_research_crawl, tool_custom_file_write, copy_file_to_folder],
             system_prompt=INDUSTRY_CRAWLER_SYSTEM_PROMPT,
             middleware=[self.messageLimitMiddleware, self.toolCallLimitMiddleware],
         )
