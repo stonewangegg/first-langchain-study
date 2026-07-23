@@ -30,7 +30,8 @@ class Tools:
             llm_type = "vllm",
             model_name = os.environ.get("MODEL_NAME", "Qwen/Qwen3.6-35B-A3B-FP8"),
             model_base_url =  os.environ.get("MODEL_BASE_URL", "http://192.168.8.50:8000/v1"),
-            model_api_key = os.environ.get("MODEL_API_KEY", "empty")
+            model_api_key = os.environ.get("MODEL_API_KEY", "empty"),
+            model_temprature=0.6
         )
 
         # make the file working dir if needed

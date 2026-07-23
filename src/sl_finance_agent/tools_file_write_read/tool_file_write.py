@@ -193,7 +193,7 @@ def tool_generate_word_doc(title: str, content: str, store_path:str) -> str:
 
 @tool
 def copy_file_to_folder(
-    source: str | Path,
+    source: str,
     target_folder: str | Path,
     new_filename: Optional[str] = None,
     overwrite: bool = False,
@@ -201,7 +201,7 @@ def copy_file_to_folder(
     """Copy ``source`` file into ``target_folder``.
 
     Args:
-        source: Path to the file to copy.
+        source: path string to the file to copy.
         target_folder: Destination directory. Created (with parents) if missing.
         new_filename: Optional new name for the copied file. If ``None`` the
             original basename is kept.
@@ -217,7 +217,7 @@ def copy_file_to_folder(
         FileExistsError: If a file with the target name already exists and
             ``overwrite`` is ``False``.
     """
-    src_path = Path(source)
+    src_path = Path(FILE_DIR + source)
     if not src_path.is_file():
         logger.warning(f"Source file not found: {src_path}")
         raise FileNotFoundError(f"Source file not found: {src_path}")
