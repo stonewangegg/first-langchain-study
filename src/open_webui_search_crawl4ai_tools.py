@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from langchain_core.callbacks import AsyncCallbackHandler
 
-from sl_finance_agent import common_web_search_crawl, uru_logger, SUPPORTED_LLM_TYPES, model_factory, CrawlAgents
+from sl_finance_agent import common_web_search_crawl, uru_logger, SUPPORTED_LLM_TYPES, ModelObj, CrawlAgents
 
 class OpenWebUIEventCallback(AsyncCallbackHandler):
 
@@ -481,6 +481,16 @@ class Tools:
         self._seen_images = set()  # Track unique images to avoid duplicates
         self.total_urls = 0
 
+        self.download_url = "http://192.168.8.50:8082/"
+
+        # llm configure
+        self.model_obj = ModelObj(
+            llm_type = "vllm",
+            model_name = os.environ.get("MODEL_NAME", "Qwen/Qwen3.6-35B-A3B-FP8"),
+            model_base_url =  os.environ.get("MODEL_BASE_URL", "http://192.168.8.50:8000/v1"),
+            model_api_key = os.environ.get("MODEL_API_KEY", "empty")
+        )
+
         uru_logger.get_logger().info("Web Search and Crawl tool initialized")
     
 
@@ -506,76 +516,73 @@ class Tools:
             event_emitter=__event_emitter__,
             logger=uru_logger.get_logger(),
         )
-
-        model_obj = model_factory(mode_str)
         
         final_answer = ""
-        if model_obj:
 
-            uru_logger.get_logger().info(f"🚀 Starting the **Main Graph** workflow for: '{user_prompt}'\n\nTo the model: '{model_obj}'")
+        uru_logger.get_logger().info(f"🚀 Starting the **Main Graph** workflow for: '{user_prompt}'\n\nTo the model: '{self.model_obj}'")
 
-            if __event_emitter__:
-                await __event_emitter__(
-                    {
-                        "type": "status",
-                        "data": {
-                            "description": "🚀 Starting Listed Company Research&Crawl Agent financial analysis...",
-                            "done": False,
-                        },
-                    }
-                )
-
-            try:
-                
-                # invoke the agent graph one via astream_events
-                agentGragh = crawlAgents.create_crawler_agent(model_obj)
-
-                final_response = await agentGragh.ainvoke(
-                    {
-                        "messages": [
-                            {
-                                "role": "user",
-                                "content": user_prompt,
-                            }
-                        ]
+        if __event_emitter__:
+            await __event_emitter__(
+                {
+                    "type": "status",
+                    "data": {
+                        "description": "🚀 Starting Listed Company Research&Crawl Agent financial analysis...",
+                        "done": False,
                     },
-                    config={
-                        "callbacks": [callback],
-                    },
-                )
+                }
+            )
 
-            except Exception as ex:
+        try:
+            
+            # invoke the agent graph one via astream_events
+            agentGragh = crawlAgents.create_crawler_agent(self.model_obj)
 
-                uru_logger.get_logger().exception(f"Workflow execution failed: {str(ex)}")
-
-                if __event_emitter__:
-                    await __event_emitter__(
+            final_response = await agentGragh.ainvoke(
+                {
+                    "messages": [
                         {
-                            "type": "status",
-                            "data": {
-                                "description": f"❌ Graph Workflow execution Failed: {str(ex)}",
-                                "done": True,
-                            },
+                            "role": "user",
+                            "content": user_prompt,
                         }
-                    )
+                    ]
+                },
+                config={
+                    "callbacks": [callback],
+                },
+            )
 
-                return f"❌ Graph Workflow execution Failed: {str(ex)}"
+        except Exception as ex:
 
-            if final_response is None:
-                raise RuntimeError("❌ Lang Graph one completed without returning a state. Check and try again.")
-
-            final_answer = final_response["messages"][-1].content
+            uru_logger.get_logger().exception(f"Workflow execution failed: {str(ex)}")
 
             if __event_emitter__:
                 await __event_emitter__(
                     {
                         "type": "status",
                         "data": {
-                            "description": "✅ Analysis completed",
+                            "description": f"❌ Graph Workflow execution Failed: {str(ex)}",
                             "done": True,
                         },
                     }
                 )
+
+            return f"❌ Graph Workflow execution Failed: {str(ex)}"
+
+        if final_response is None:
+            raise RuntimeError("❌ Lang Graph one completed without returning a state. Check and try again.")
+
+        final_answer = final_response["messages"][-1].content
+
+        if __event_emitter__:
+            await __event_emitter__(
+                {
+                    "type": "status",
+                    "data": {
+                        "description": "✅ Analysis completed",
+                        "done": True,
+                    },
+                }
+            )
 
         return final_answer or ""
 

@@ -6,7 +6,6 @@ import os
 
 # define the support model types
 from dataclasses import dataclass
-from pathlib import Path
 
 from langchain_ollama import ChatOllama
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -17,12 +16,12 @@ from .logger_utils import get_logger
 logger = get_logger(__name__)
 
 # llm info
-LOCAL_MODEL="Qwen/Qwen3.6-35B-A3B-FP8"
-LOCAL_BASEURL="http://192.168.8.50:8000/v1"
-LOCAL_API_KEY="empty"
-ONLINE_MODEL="minimax-m3:cloud"
-ONLINE_BASEURL="http://172.30.0.1:11434"
-ONLINE_API_KEY=os.environ.get("ONLINE_API_KEY", "")
+VLLM_MODEL=os.environ.get("VLLM_MODEL", "Qwen/Qwen3.6-35B-A3B-FP8")
+VLLM_BASEURL=os.environ.get("VLLM_BASEURL", "http://192.168.8.50:8000/v1")
+VLLM_API_KEY=os.environ.get("VLLM_API_KEY", "empty")
+OLLAMA_ONLINE_MODEL=os.environ.get("OLLAMA_ONLINE_MODEL", "minimax-m3:cloud")
+OLLAMA_ONLINE_BASEURL=os.environ.get("OLLAMA_ONLINE_BASEURL", "http://172.30.0.1:11434")
+OLLAMA_ONLINE_API_KEY=os.environ.get("OLLAMA_ONLINE_API_KEY", "")
 
 SUPPORTED_LLM_TYPES = ("ollama", "vllm")
 
@@ -39,6 +38,9 @@ class ModelObj:
     model_name: str
     model_base_url: str
     model_api_key: str = "Empty"
+    model_temprature: float = 0.6
+    model_top_p: float = 0.95
+    model_top_k: int = 20
 
 def model_factory(llm_type: str) -> ModelObj | None:
         
@@ -47,9 +49,9 @@ def model_factory(llm_type: str) -> ModelObj | None:
         raise ValueError(f"Unsupported LLM type: {llm_type}")
     
     if llm_type ==SUPPORTED_LLM_TYPES[0]:
-        return ModelObj(llm_type = llm_type, model_name=ONLINE_MODEL, model_base_url=ONLINE_BASEURL, model_api_key = "")
+        return ModelObj(llm_type = llm_type, model_name=OLLAMA_ONLINE_MODEL, model_base_url=OLLAMA_ONLINE_BASEURL, model_api_key = "")
     elif llm_type ==SUPPORTED_LLM_TYPES[1]:
-        return ModelObj(llm_type = llm_type, model_name=LOCAL_MODEL, model_base_url=LOCAL_BASEURL, model_api_key = "empty")
+        return ModelObj(llm_type = llm_type, model_name=VLLM_MODEL, model_base_url=VLLM_BASEURL, model_api_key = "empty")
     
     return None
 
@@ -95,7 +97,7 @@ def resolve_llm(model_obj: ModelObj) -> BaseChatModel:
             cache=True,
             verbose=True,                       # Print additional LangChain logs.Useful for debugging: prompts, tool calls, intermediate chains
             reasoning=False,
-            temperature=0.5,
+            temperature=model_obj.model_temprature,
             base_url=model_obj.model_base_url,
             repeat_penalty=1.05,
             num_ctx=int(MAX_COMPLETION_TOKENS),
@@ -108,8 +110,8 @@ def resolve_llm(model_obj: ModelObj) -> BaseChatModel:
             model=model_obj.model_name,                 # Model name (can be any vLLM-supported model)
             base_url=model_obj.model_base_url,          # vLLM server endpoint         
             api_key=SecretStr(model_obj.model_api_key), # vLLM uses a placeholder token
-            temperature=0.4,
-            top_p=0.9,
+            temperature=model_obj.model_temprature,
+            top_p=model_obj.model_top_p,
             max_completion_tokens=int(MAX_COMPLETION_TOKENS)
         )
 
