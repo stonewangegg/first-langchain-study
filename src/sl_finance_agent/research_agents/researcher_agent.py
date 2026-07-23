@@ -62,7 +62,7 @@ RESEARCHER_SYSTEM_PROMPT = """
 ## Core steps
 1. Make Plan: Use `get_current_time` to get current time and make a plan to list all search target files.
 2. Use `tool_cninfo_report_downloader` to download the target PDF files **One By One**, refer to the skill of "cninfo-report-downloader". 
-3. You must generate a json file with the meta data of download PDF files.
+3. You must generate a json file with the meta data of download PDF files, use `save_json_file`.
 
 ## Constraints 
 - Critical High Rule: Do not call concurrency download request with tool, You must wait the first query complete, then send the next query.

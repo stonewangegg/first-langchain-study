@@ -45,7 +45,7 @@ from langchain.messages import AIMessage
 from langchain_core.caches import InMemoryCache
 from langchain_core.globals import set_llm_cache
 
-from ..tools_file_write_read import tool_custom_file_read, copy_file_to_folder
+from ..tools_file_write_read import tool_custom_file_read, tool_custom_file_write
 from ..common_utils import ModelObj, get_logger, FS_BACKEND, get_current_time, get_file_dir, resolve_llm
 
 ANALYST_SYSTEM_PROMPT = """
@@ -56,8 +56,8 @@ ANALYST_SYSTEM_PROMPT = """
 ## Core Steps
 1. Firstly: You find and review the json file for all target PDF files one by one.
 2. Secondly: You use `tool_custom_file_read` to read target PDF file follow the plan, you must finish one and then the next one, **Do Not allow Parallel reading**.
-3. Thirdly: Analyze and summary the content follow the skill 'senior-financial-dupont-analyst'. Then generate report file with markdown format and get the full path of the report file.
-4. Finally: You must use `copy_file_to_folder` to copy the report file from current path into the destination directory:'/app/backend/shared-files'. **And return the report file name**.
+3. Thirdly: Analyze and summary the content follow the skill 'senior-financial-dupont-analyst'. Then generate report file with `tool_custom_file_write` in markdown format.
+4. Finally: You must get the full path of the report file, and copy it into the destination directory:'/app/backend/shared-files'. **And return the report file name**.
 
 ## Core Principles
 - You should anaylyze and summarize content base on corresponding skill of "senior-financial-dupont-analyst".
@@ -178,7 +178,7 @@ def create_analyzer_agent(model_obj: ModelObj):
         model=model,
         skills=["/skills/"],
         backend=FS_BACKEND,
-        tools=[get_current_time, tool_custom_file_read, copy_file_to_folder],
+        tools=[get_current_time, tool_custom_file_read, tool_custom_file_write],
         system_prompt=ANALYST_SYSTEM_PROMPT,
         middleware=[messageLimitMiddleware, toolCallLimitMiddleware],
     )
