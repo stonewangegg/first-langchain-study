@@ -256,20 +256,3 @@ def tool_lightRAG_search_docs(question: str) -> str:
 
     logger.error("Failed tool call, retrieve docs failed with question: %s, to vector store: './faiss_index'. Check and try again.", question)
     return f"Failed tool call, retrieve docs failed with question: {question}, to vector store: './faiss_index'. Check and try again."
-
-
-if __name__ == "__main__":
-
-    test_file_path = "/home/stonewang/study/langchain/first-start/first-start/src/tmp/reports/2023_annual/300475_2023年年度报告.pdf"
-    full_text_content = []
-    loader = PDFPlumberLoader(test_file_path)
-
-    for page in loader.lazy_load():
-        if not page:
-            print(f"⚠️ Load PDF file with lazy load failed with file: {test_file_path}")
-        
-        print("Page metadata: " + str(page.metadata) + "\n")
-        content = page.page_content
-        full_text_content.append(content)
-    
-    print(f"FULL TEXT CONTENT: \n{"\n**************************************\n".join(full_text_content)}")
